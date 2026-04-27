@@ -1,16 +1,24 @@
-import os
-import logging
+
 import pandas as pd
+import logging
+import sys
+from pathlib import Path
 from datetime import datetime
 
+# ============================================================
+# CONFIGURAÇÃO
+# ============================================================
 
-DATA_PATH = "data"
-RIDE_FILE = os.path.join(DATA_PATH, "ride.csv")
-PRODUCT_FILE = os.path.join(DATA_PATH, "product.csv")
-RIDE_ESTIMATE_FILE = os.path.join(DATA_PATH, "rideestimative.csv")
+RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / "data"
+
+RIDE_FILE = DATA_DIR / "ride_v2.csv"
+PRODUCT_FILE = DATA_DIR / "product.csv"
+RIDE_EST_FILE = DATA_DIR / "rideestimative_v3.csv"
+RIDE_ADDRESS_FILE = DATA_DIR / "rideaddress_v1.csv"
 
 CHUNKSIZE = 100_000
-TARGET_FIELD = "price"
 
 PII_FIELDS = [
     "Name",
@@ -19,129 +27,146 @@ PII_FIELDS = [
     "Plate",
     "DriverPhone",
     "DriverPicture",
-    "Registration"
+    "Registration",
 ]
-def setup_logging():
-    os.makedirs("reports", exist_ok=True)
-    log_filename = f"reports/pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        handlers=[
-            logging.FileHandler(log_filename),
-            logging.StreamHandler()
-        ]
-    )
+TARGET_FIELD = "price"
 
-    logging.info("==============================================")
-    logging.info("Pipeline iniciado")
-    logging.info("==============================================")
+# ============================================================
+# LOGGING
+# ============================================================
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 
-def remove_pii(df):
-    existing_pii = [col for col in PII_FIELDS if col in df.columns]
+log = logging.getLogger(__name__)
 
-    if existing_pii:
-        logging.warning(f"Removendo campos PII: {existing_pii}")
-        df = df.drop(columns=existing_pii)
+# ============================================================
+# UTILITÁRIOS
+# ============================================================
 
-    return df
+def remove_pii_columns(columns):
+    """Remove colunas PII ainda no momento da leitura."""
+    return [col for col in columns if col not in PII_FIELDS]
 
 
-def validate_no_target_in_features(feature_columns):
+def validate_no_target_feature(feature_columns):
     if TARGET_FIELD in feature_columns:
         raise ValueError(
-            f"🚨 ERRO CRÍTICO: O campo '{TARGET_FIELD}' NÃO pode ser usado como feature!"
+            f"🚨 ERRO CRÍTICO: '{TARGET_FIELD}' não pode ser usado como feature."
         )
+    log.info("Validação de uso de target como feature OK.")
 
-    logging.info("Validação de target como feature OK.")
 
+# ============================================================
+# LEITURA PADRÃO (ride + product)
+# ============================================================
 
-def read_csv_standard(filepath, name):
-    logging.info(f"Lendo arquivo {name}...")
+def read_standard_csv(filepath: Path, name: str):
 
-    if not os.path.exists(filepath):
+    log.info(f"Lendo {name}...")
+
+    if not filepath.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {filepath}")
+
+    # Primeiro lê só cabeçalho para remover PII antes
+    header = pd.read_csv(filepath, sep=";", nrows=0)
+    cols = remove_pii_columns(header.columns)
 
     df = pd.read_csv(
         filepath,
         sep=";",
-        on_bad_lines="warn"
+        usecols=cols,  # REMOVE PII AQUI
+        low_memory=True,
     )
 
-    logging.info(f"{name} carregado com sucesso.")
-    logging.info(f"Shape: {df.shape}")
-    logging.info(f"Colunas: {list(df.columns)}")
-
-    df = remove_pii(df)
-
+    log.info(f"{name} carregado | shape={df.shape}")
     return df
 
 
-def read_csv_incremental(filepath, name):
-    logging.info("==============================================")
-    logging.info(f"Iniciando pipeline incremental {name}")
-    logging.info("==============================================")
+# ============================================================
+# PIPELINE INCREMENTAL — rideestimative
+# ============================================================
 
-    if not os.path.exists(filepath):
+def read_rideestimative_incremental(filepath: Path):
+
+    log.info("=" * 60)
+    log.info("Iniciando pipeline incremental rideestimative_v3.csv")
+    log.info("=" * 60)
+
+    if not filepath.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {filepath}")
+
+    # Detecta schema real
+    header = pd.read_csv(filepath, sep=";", nrows=0)
+    real_columns = list(header.columns)
+
+    log.info(f"Schema real detectado ({len(real_columns)} colunas):")
+    for col in real_columns:
+        log.info(f" - {col}")
 
     total_rows = 0
     total_chunks = 0
-    detected_schema = None
 
     for chunk in pd.read_csv(
-    filepath,
-    chunksize=CHUNKSIZE,
-    sep=";",               
-    low_memory=True
-):
-
+        filepath,
+        sep=";",
+        chunksize=CHUNKSIZE,
+        low_memory=True,
+    ):
         total_chunks += 1
+        rows = len(chunk)
+        total_rows += rows
 
-        if detected_schema is None:
-            detected_schema = list(chunk.columns)
-            logging.info(f"Schema detectado ({len(detected_schema)} colunas):")
-            for col in detected_schema:
-                logging.info(f"- {col}")
-
-        logging.info(f"Processando chunk #{total_chunks}")
-
-        chunk = remove_pii(chunk)
-
-        feature_columns = [col for col in chunk.columns if col != TARGET_FIELD]
-        validate_no_target_in_features(feature_columns)
-
-        total_rows += len(chunk)
-
-        logging.info(
-            f"Chunk #{total_chunks} | Linhas: {len(chunk)} | Total acumulado: {total_rows}"
+        log.info(
+            f"Chunk #{total_chunks} | linhas={rows} | acumulado={total_rows}"
         )
 
+    log.info("=" * 60)
+    log.info("Pipeline incremental concluído")
+    log.info(f"Total linhas processadas: {total_rows}")
+    log.info(f"Total chunks: {total_chunks}")
+    log.info("=" * 60)
 
-    logging.info("==============================================")
-    logging.info("Pipeline incremental concluído.")
-    logging.info(f"Total linhas processadas: {total_rows}")
-    logging.info(f"Total chunks: {total_chunks}")
-    logging.info("==============================================")
-
-    return detected_schema
+    return {
+        "rows": total_rows,
+        "chunks": total_chunks,
+        "columns": real_columns,
+    }
 
 
+# ============================================================
+# MAIN
+# ============================================================
 
 def main():
-    setup_logging()
 
-    ride_df = read_csv_standard(RIDE_FILE, "ride.csv")
-    product_df = read_csv_standard(PRODUCT_FILE, "product.csv")
+    log.info("=" * 60)
+    log.info("Pipeline iniciado")
+    log.info("=" * 60)
 
-    ride_estimate_schema = read_csv_incremental(
-        RIDE_ESTIMATE_FILE,
-        "rideestimative.csv"
+    ride_df = read_standard_csv(RIDE_FILE, "ride_v2.csv")
+    product_df = read_standard_csv(PRODUCT_FILE, "product.csv")
+    ride_address_df = read_standard_csv(
+        RIDE_ADDRESS_FILE,
+        "rideaddress_v1.csv"
     )
 
-    logging.info("Pipeline finalizado com sucesso.")
+    # Bloqueio de uso de price como feature
+    feature_cols = [c for c in ride_df.columns if c != TARGET_FIELD]
+    validate_no_target_feature(feature_cols)
+
+    stats = read_rideestimative_incremental(RIDE_EST_FILE)
+
+    log.info("=" * 60)
+    log.info("Pipeline finalizado com sucesso")
+    log.info("=" * 60)
+
+    return ride_df, product_df, ride_address_df, stats
+
 
 
 if __name__ == "__main__":
