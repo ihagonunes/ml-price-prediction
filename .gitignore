@@ -4,6 +4,7 @@ data/*.rar
 data/*.zip
 data/*.gz
 data/*.parquet
+data/analytical
 
 # ─── Modelos serializados ───────────────────────────────────────────────────
 models/*.joblib
@@ -46,6 +47,7 @@ Thumbs.db
 
 # ─── Relatórios gerados (grandes) ───────────────────────────────────────────
 reports/*.html
+reports/*.json
 
 # ─── Logs ───────────────────────────────────────────────────────────────────
 *.log
