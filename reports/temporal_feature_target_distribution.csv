@@ -1,0 +1,112 @@
+CategoryID,CategoryName,feature,value,row_count,row_pct
+2,UberX,CreateDayOfWeekName,quinta,133661,18.8243
+2,UberX,CreateDayOfWeekName,quarta,132439,18.6522
+2,UberX,CreateDayOfWeekName,sexta,131481,18.5173
+2,UberX,CreateDayOfWeekName,segunda,117397,16.5337
+2,UberX,CreateDayOfWeekName,terca,112998,15.9142
+2,UberX,CreateDayOfWeekName,sabado,77176,10.8692
+2,UberX,CreateDayOfWeekName,domingo,4894,0.6893
+2,UberX,CreateDayPeriod,tarde,281179,39.6001
+2,UberX,CreateDayPeriod,manha,232851,32.7938
+2,UberX,CreateDayPeriod,noite,184797,26.0261
+2,UberX,CreateDayPeriod,madrugada,11219,1.58
+2,UberX,CreateHour,9,90294,12.7166
+2,UberX,CreateHour,10,68891,9.7023
+2,UberX,CreateHour,18,62775,8.841
+2,UberX,CreateHour,19,59685,8.4058
+2,UberX,CreateHour,17,50289,7.0825
+2,UberX,CreateHour,14,49936,7.0328
+2,UberX,CreateHour,16,49127,6.9188
+2,UberX,CreateHour,15,46929,6.6093
+2,UberX,CreateHour,13,45987,6.4766
+2,UberX,CreateHour,12,38911,5.4801
+2,UberX,CreateHour,11,38565,5.4313
+2,UberX,CreateHour,8,32500,4.5772
+2,UberX,CreateHour,20,31506,4.4372
+2,UberX,CreateHour,21,15788,2.2235
+2,UberX,CreateHour,22,9328,1.3137
+2,UberX,CreateHour,23,5715,0.8049
+2,UberX,CreateHour,0,4257,0.5995
+2,UberX,CreateHour,1,2860,0.4028
+2,UberX,CreateHour,7,2235,0.3148
+2,UberX,CreateHour,2,1787,0.2517
+2,UberX,CreateHour,3,1279,0.1801
+2,UberX,CreateHour,4,651,0.0917
+2,UberX,CreateHour,5,385,0.0542
+2,UberX,CreateHour,6,366,0.0515
+2,UberX,CreateIsHolidayBR,False,708332,99.7586
+2,UberX,CreateIsHolidayBR,True,1714,0.2414
+4,Uber Black,CreateDayOfWeekName,quinta,24274,19.4222
+4,Uber Black,CreateDayOfWeekName,quarta,23493,18.7973
+4,Uber Black,CreateDayOfWeekName,sexta,22859,18.29
+4,Uber Black,CreateDayOfWeekName,terca,20970,16.7786
+4,Uber Black,CreateDayOfWeekName,segunda,20087,16.072
+4,Uber Black,CreateDayOfWeekName,sabado,11913,9.5318
+4,Uber Black,CreateDayOfWeekName,domingo,1385,1.1082
+4,Uber Black,CreateDayPeriod,tarde,50271,40.2229
+4,Uber Black,CreateDayPeriod,manha,37060,29.6525
+4,Uber Black,CreateDayPeriod,noite,34661,27.733
+4,Uber Black,CreateDayPeriod,madrugada,2989,2.3916
+4,Uber Black,CreateHour,9,14165,11.3337
+4,Uber Black,CreateHour,18,11195,8.9574
+4,Uber Black,CreateHour,17,10126,8.102
+4,Uber Black,CreateHour,19,10004,8.0044
+4,Uber Black,CreateHour,10,9586,7.67
+4,Uber Black,CreateHour,16,8993,7.1955
+4,Uber Black,CreateHour,14,8478,6.7834
+4,Uber Black,CreateHour,13,8312,6.6506
+4,Uber Black,CreateHour,15,7660,6.1289
+4,Uber Black,CreateHour,11,6774,5.42
+4,Uber Black,CreateHour,12,6702,5.3624
+4,Uber Black,CreateHour,20,6138,4.9111
+4,Uber Black,CreateHour,8,5963,4.7711
+4,Uber Black,CreateHour,21,3636,2.9092
+4,Uber Black,CreateHour,22,2311,1.8491
+4,Uber Black,CreateHour,23,1377,1.1018
+4,Uber Black,CreateHour,0,1125,0.9001
+4,Uber Black,CreateHour,1,740,0.5921
+4,Uber Black,CreateHour,2,518,0.4145
+4,Uber Black,CreateHour,7,474,0.3793
+4,Uber Black,CreateHour,3,333,0.2664
+4,Uber Black,CreateHour,4,191,0.1528
+4,Uber Black,CreateHour,6,98,0.0784
+4,Uber Black,CreateHour,5,82,0.0656
+4,Uber Black,CreateIsHolidayBR,False,124519,99.6303
+4,Uber Black,CreateIsHolidayBR,True,462,0.3697
+9,Uber Comfort,CreateDayOfWeekName,quinta,53185,19.4004
+9,Uber Comfort,CreateDayOfWeekName,quarta,51986,18.963
+9,Uber Comfort,CreateDayOfWeekName,sexta,50416,18.3903
+9,Uber Comfort,CreateDayOfWeekName,terca,45410,16.5643
+9,Uber Comfort,CreateDayOfWeekName,segunda,44177,16.1145
+9,Uber Comfort,CreateDayOfWeekName,sabado,26431,9.6413
+9,Uber Comfort,CreateDayOfWeekName,domingo,2539,0.9262
+9,Uber Comfort,CreateDayPeriod,tarde,107200,39.1035
+9,Uber Comfort,CreateDayPeriod,manha,85822,31.3054
+9,Uber Comfort,CreateDayPeriod,noite,75132,27.406
+9,Uber Comfort,CreateDayPeriod,madrugada,5990,2.185
+9,Uber Comfort,CreateHour,9,32059,11.6942
+9,Uber Comfort,CreateHour,10,25444,9.2813
+9,Uber Comfort,CreateHour,18,24817,9.0525
+9,Uber Comfort,CreateHour,19,21737,7.929
+9,Uber Comfort,CreateHour,17,20649,7.5322
+9,Uber Comfort,CreateHour,14,18878,6.8862
+9,Uber Comfort,CreateHour,13,18330,6.6863
+9,Uber Comfort,CreateHour,16,17962,6.552
+9,Uber Comfort,CreateHour,15,16456,6.0027
+9,Uber Comfort,CreateHour,11,15664,5.7138
+9,Uber Comfort,CreateHour,12,14925,5.4442
+9,Uber Comfort,CreateHour,20,13289,4.8475
+9,Uber Comfort,CreateHour,8,11542,4.2102
+9,Uber Comfort,CreateHour,21,7599,2.7719
+9,Uber Comfort,CreateHour,22,4811,1.7549
+9,Uber Comfort,CreateHour,23,2879,1.0502
+9,Uber Comfort,CreateHour,0,2225,0.8116
+9,Uber Comfort,CreateHour,1,1522,0.5552
+9,Uber Comfort,CreateHour,2,979,0.3571
+9,Uber Comfort,CreateHour,7,932,0.34
+9,Uber Comfort,CreateHour,3,700,0.2553
+9,Uber Comfort,CreateHour,4,372,0.1357
+9,Uber Comfort,CreateHour,5,192,0.07
+9,Uber Comfort,CreateHour,6,181,0.066
+9,Uber Comfort,CreateIsHolidayBR,False,273385,99.7231
+9,Uber Comfort,CreateIsHolidayBR,True,759,0.2769

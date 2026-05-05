@@ -1,0 +1,14 @@
+metric,value
+rows_processed,1999782
+rows_written,1999782
+chunks_written,640
+rows_on_disk,1999782
+partition_count,8
+partition_1_rows,51352
+partition_2_rows,710046
+partition_4_rows,124981
+partition_5_rows,439155
+partition_6_rows,28122
+partition_8_rows,36641
+partition_9_rows,274144
+partition_10_rows,335341
