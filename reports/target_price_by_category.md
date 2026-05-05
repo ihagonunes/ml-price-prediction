@@ -1,7 +1,7 @@
 # Analise do Target Price por Categoria
 
-- Gerado em: `2026-05-04T21:47:41.311226`
-- Fonte: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical`
+- Gerado em: `2026-05-04T21:55:05.405573`
+- Fonte: `c:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical`
 - Leitura feita diretamente do Parquet particionado por `CategoryID`, com filtro nas categorias `2`, `9` e `4`.
 - Categorias analisadas: `UberX (2)`, `Uber Comfort (9)` e `Uber Black (4)`.
 

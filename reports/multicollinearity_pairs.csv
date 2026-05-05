@@ -1,0 +1,3 @@
+feature_left,feature_right,corr,abs_corr
+OriginLng,DestinationLng,0.999211,0.999211
+OriginLat,DestinationLat,0.9992,0.9992

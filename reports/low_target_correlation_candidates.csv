@@ -1,0 +1,11 @@
+feature,corr_to_target,abs_corr_to_target,null_pct,feature_status,feature_family,modeling_role,notes,possible_action
+RideStatusID,0.031075548345618247,0.031075548345618247,0.0,candidate,categorical_code,candidate,,keep_as_categorical_test_not_by_pearson_alone
+WaitingTime,0.029588745361766238,0.029588745361766238,0.0,candidate,continuous,candidate,,keep_for_baseline_due_business_plausibility
+DestinationLat,-0.019346752640543554,0.019346752640543554,0.01,candidate,spatial_coordinate,candidate,,transform_into_distance_or_zone_features
+OriginLat,-0.019020151429583947,0.019020151429583947,0.0,candidate,spatial_coordinate,candidate,,transform_into_distance_or_zone_features
+TotalUsers,0.008534809272721211,0.008534809272721211,0.0,candidate,count,candidate,,keep_for_baseline_due_business_plausibility
+CompanyID,0.007070740311321549,0.007070740311321549,0.0,candidate,categorical_code,candidate,,keep_as_categorical_test_not_by_pearson_alone
+CategoryID,0.005883122233289305,0.005883122233289305,0.0,candidate,categorical_code,candidate,,keep_as_categorical_test_not_by_pearson_alone
+OriginLng,0.003904269470757474,0.003904269470757474,0.0,candidate,spatial_coordinate,candidate,,transform_into_distance_or_zone_features
+DestinationLng,0.002159306994654959,0.002159306994654959,0.01,candidate,spatial_coordinate,candidate,,transform_into_distance_or_zone_features
+Fee,-0.001892777580717315,0.001892777580717315,0.0,candidate,monetary_component,candidate,,deprioritize_raw_feature_or_validate_semantics

@@ -1,0 +1,15 @@
+feature,corr_to_target,abs_corr_to_target,null_pct,feature_status,feature_family,modeling_role,notes
+RidePrice,0.8330817420353545,0.8330817420353545,0.0,leakage_or_post_event,leakage,exclude,Preco real da corrida apos a execucao; vazamento explicito.
+ProductProviderID,0.05728552092681665,0.05728552092681665,0.0,candidate,categorical_code,candidate,
+Selected,-0.03575512981028798,0.03575512981028798,0.0,leakage_or_post_event,post_event,exclude,"Marcador de escolha da estimativa, conhecido apenas apos a selecao do usuario."
+RideStatusID,0.031075548345618247,0.031075548345618247,0.0,candidate,categorical_code,candidate,
+WaitingTime,0.029588745361766238,0.029588745361766238,0.0,candidate,continuous,candidate,
+DestinationLat,-0.019346752640543554,0.019346752640543554,0.01,candidate,spatial_coordinate,candidate,
+OriginLat,-0.019020151429583947,0.019020151429583947,0.0,candidate,spatial_coordinate,candidate,
+RideReasonSelectedEstimativeID,0.015441045685290863,0.015441045685290863,88.3,leakage_or_post_event,post_event,exclude,"Motivo da selecao da estimativa, disponivel apenas apos o evento."
+TotalUsers,0.008534809272721211,0.008534809272721211,0.0,candidate,count,candidate,
+CompanyID,0.007070740311321549,0.007070740311321549,0.0,candidate,categorical_code,candidate,
+CategoryID,0.005883122233289305,0.005883122233289305,0.0,candidate,categorical_code,candidate,
+OriginLng,0.003904269470757474,0.003904269470757474,0.0,candidate,spatial_coordinate,candidate,
+DestinationLng,0.002159306994654959,0.002159306994654959,0.01,candidate,spatial_coordinate,candidate,
+Fee,-0.001892777580717315,0.001892777580717315,0.0,candidate,monetary_component,candidate,
