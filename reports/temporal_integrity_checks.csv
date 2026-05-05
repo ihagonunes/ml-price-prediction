@@ -1,0 +1,9 @@
+check_name,count,pct_of_rides,status,note
+schedule_before_create_any,238854,99.8261,expected_micro_offset,Schedule tende a anteceder Create por milissegundos em corridas on-demand.
+schedule_create_abs_gt_1_min,159,0.0665,review,"Gap maior que 1 minuto entre Schedule e Create; vale inspecionar, embora nao haja casos >5 minutos."
+schedule_create_abs_gt_5_min,0,0.0,ok,Nao foram encontrados casos acima de 5 minutos.
+updated_before_create,0,0.0,ok,Nao ha timestamps de Updated anteriores a Create.
+updated_before_schedule,0,0.0,ok,Nao ha timestamps de Updated anteriores a Schedule.
+updated_after_1_hour,172,0.0719,review,Atualizacoes tardias sao raras e sugerem eventos operacionais fora da janela imediata.
+updated_after_24_hours,59,0.0247,review,Atualizacoes acima de 24h nao devem ser usadas como ancora temporal para TSCV.
+updated_after_7_days,30,0.0125,review,Casos muito tardios reforcam que Updated e inadequado como indice temporal principal.

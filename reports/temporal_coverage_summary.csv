@@ -1,0 +1,8 @@
+table_name,time_field,row_count,min_timestamp,max_timestamp,null_count,distinct_dates,note
+ride,Create,239270,2021-08-17 10:09:45.642582500,2022-06-14 20:56:40.757298900,0,302,Campo nativo da tabela ride.
+ride,Schedule,239270,2021-08-17 10:09:45.628170900,2022-06-14 20:56:40.699043200,0,302,Campo nativo da tabela ride.
+ride,Updated,239270,2021-08-17 10:09:53.467805100,2022-06-14 20:56:55.425096800,0,302,Campo nativo da tabela ride.
+rideestimative,Create,2000000,2021-08-17 10:09:45.642582500,2022-06-14 20:56:40.757298900,0,302,Cobertura herdada do timestamp da corrida associada.
+rideestimative,Schedule,2000000,2021-08-17 10:09:45.628170900,2022-06-14 20:56:40.699043200,0,302,Cobertura herdada do timestamp da corrida associada.
+rideestimative,Updated,2000000,2021-08-17 10:09:53.467805100,2022-06-14 20:56:55.425096800,0,302,Cobertura herdada do timestamp da corrida associada.
+product,N/A,34,,,,,Tabela sem campos temporais nativos no dataset analitico.
