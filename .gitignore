@@ -6,6 +6,7 @@ data/*.gz
 data/*.parquet
 data/analytical
 data/analytical_curated
+data/features_temporal
 
 # ─── Modelos serializados ───────────────────────────────────────────────────
 models/*.joblib
