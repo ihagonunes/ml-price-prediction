@@ -5,6 +5,7 @@ data/*.zip
 data/*.gz
 data/*.parquet
 data/analytical
+data/analytical_curated
 
 # ─── Modelos serializados ───────────────────────────────────────────────────
 models/*.joblib
