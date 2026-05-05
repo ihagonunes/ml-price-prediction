@@ -16,7 +16,7 @@ optuna==3.6.1
 shap==0.45.1
 
 # ─── EDA e Profiling ────────────────────────────────────────────────────────
-ydata-profiling==4.8.3
+sweetviz==2.3.3
 matplotlib==3.10.9
 seaborn==0.13.2
 tabulate==0.10.0
