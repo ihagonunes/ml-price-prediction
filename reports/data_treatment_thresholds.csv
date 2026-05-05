@@ -1,0 +1,10 @@
+feature,group_key,quantile,upper_cap
+WaitingTime,ALL,0.99,15.0
+Price,1,0.995,192.1225
+Price,2,0.995,163.4075
+Price,4,0.995,198.5
+Price,5,0.995,251.63
+Price,6,0.995,312.4322
+Price,8,0.995,267.4
+Price,9,0.995,210.0
+Price,10,0.995,125.15
