@@ -1,0 +1,4 @@
+CategoryID,CategoryName,Rows,FragmentsScanned,Mean,Median,Std,Min,Max,Skewness,IQR,MildOutlierLower,MildOutlierUpper,ExtremeOutlierLower,ExtremeOutlierUpper,MildOutlierCount,MildOutlierPct,ExtremeOutlierCount,ExtremeOutlierPct,ZeroPriceCount,ZeroPricePct
+2,UberX,710134,20,29.5641,21.0,81.371,0.0,13918.82,74.2729,21.5,-18.75,67.25,-51.0,99.5,39122,5.51,13250,1.87,3,0.0
+9,Uber Comfort,274144,20,43.6349,33.5,46.6183,5.88,8193.38,55.5139,36.0,-34.0,110.0,-88.0,164.0,12632,4.61,3047,1.11,0,0.0
+4,Uber Black,124981,20,53.7458,44.0,40.43,6.03,1796.49,4.7024,47.0,-45.5,142.5,-116.0,213.0,3598,2.88,419,0.34,0,0.0
