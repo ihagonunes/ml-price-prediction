@@ -17,8 +17,9 @@ shap==0.45.1
 
 # ─── EDA e Profiling ────────────────────────────────────────────────────────
 ydata-profiling==4.8.3
-matplotlib==3.9.0
+matplotlib==3.10.9
 seaborn==0.13.2
+tabulate==0.10.0
 
 # ─── Feriados brasileiros ───────────────────────────────────────────────────
 holidays==0.46
