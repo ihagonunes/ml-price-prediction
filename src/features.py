@@ -29,6 +29,8 @@ DISTRIBUTION_FILE = REPORTS_DIR / "temporal_feature_distribution.csv"
 CATEGORY_DISTRIBUTION_FILE = REPORTS_DIR / "temporal_feature_target_distribution.csv"
 METRICS_FILE = REPORTS_DIR / "temporal_feature_metrics.csv"
 REPORT_FILE = REPORTS_DIR / "temporal_feature_report.md"
+CROSS_COVERAGE_FILE = REPORTS_DIR / "cross_price_feature_coverage.csv"
+CROSS_REPORT_FILE = REPORTS_DIR / "cross_price_feature_report.md"
 
 BATCH_SIZE = 100_000
 TIMESTAMP_COLUMNS = ["Schedule", "Create", "Updated"]
@@ -38,6 +40,12 @@ TARGET_CATEGORY_NAMES = {
     9: "Uber Comfort",
     4: "Uber Black",
 }
+CROSS_PRICE_PRODUCT_MAP = {
+    "UberX": "Price_UberX",
+    "Comfort": "Price_Comfort",
+    "Black": "Price_Black",
+}
+CROSS_PRICE_COLUMNS = list(CROSS_PRICE_PRODUCT_MAP.values())
 DAY_OF_WEEK_NAMES = {
     0: "segunda",
     1: "terca",
@@ -135,6 +143,70 @@ def add_temporal_features(
     return cast_object_columns_to_string(enriched)
 
 
+def build_cross_price_lookup(
+    dataset: ds.Dataset,
+) -> tuple[pd.DataFrame, dict]:
+    lookup_df = dataset.to_table(
+        columns=["RideID", "RideEstimativeID", "ProductID", "Price"]
+    ).to_pandas()
+    lookup_df["ProductID"] = lookup_df["ProductID"].astype("string")
+    lookup_df = lookup_df.loc[
+        lookup_df["ProductID"].isin(CROSS_PRICE_PRODUCT_MAP)
+    ].copy()
+    lookup_df = lookup_df.sort_values(
+        by=["RideID", "ProductID", "RideEstimativeID"],
+        kind="stable",
+    )
+
+    duplicate_mask = lookup_df.duplicated(["RideID", "ProductID"], keep="first")
+    duplicate_rows = lookup_df.loc[duplicate_mask].copy()
+    canonical_lookup_df = lookup_df.loc[~duplicate_mask].copy()
+
+    pivot_df = canonical_lookup_df.pivot(
+        index="RideID",
+        columns="ProductID",
+        values="Price",
+    ).rename(columns=CROSS_PRICE_PRODUCT_MAP)
+    pivot_df = pivot_df.reindex(columns=CROSS_PRICE_COLUMNS)
+    pivot_df = pivot_df.reset_index()
+
+    metrics = {
+        "canonical_source_rows": int(len(lookup_df)),
+        "canonical_unique_ride_ids": int(lookup_df["RideID"].nunique()),
+        "canonical_duplicate_rows_collapsed": int(duplicate_mask.sum()),
+        "rides_with_all_three_canonical_prices": int(
+            pivot_df[CROSS_PRICE_COLUMNS].notna().all(axis=1).sum()
+        ),
+    }
+
+    for product_name, feature_name in CROSS_PRICE_PRODUCT_MAP.items():
+        product_rows = lookup_df.loc[lookup_df["ProductID"] == product_name]
+        metrics[f"{product_name}_rows"] = int(len(product_rows))
+        metrics[f"{product_name}_unique_rides"] = int(product_rows["RideID"].nunique())
+        metrics[f"{product_name}_duplicates_collapsed"] = int(
+            duplicate_rows["ProductID"].eq(product_name).sum()
+        )
+        metrics[f"{feature_name}_ride_coverage_pct"] = round(
+            pivot_df[feature_name].notna().mean() * 100,
+            4,
+        )
+
+    return pivot_df, metrics
+
+
+def add_cross_price_features(
+    df: pd.DataFrame,
+    cross_price_lookup_df: pd.DataFrame,
+) -> pd.DataFrame:
+    enriched = df.merge(
+        cross_price_lookup_df,
+        on="RideID",
+        how="left",
+        validate="many_to_one",
+    )
+    return enriched
+
+
 def update_overall_distribution(
     df: pd.DataFrame,
     counter: Counter,
@@ -217,14 +289,26 @@ def build_category_distribution_df(
     ).reset_index(drop=True)
 
 
+def build_cross_feature_coverage_df(
+    model_metrics: list[dict],
+) -> pd.DataFrame:
+    coverage_df = pd.DataFrame(model_metrics)
+    return coverage_df.sort_values(
+        by=["ModelProduct", "FeatureRole", "FeatureName"],
+        kind="stable",
+    ).reset_index(drop=True)
+
+
 def write_validation_report(
     metrics: dict,
     overall_distribution_df: pd.DataFrame,
     category_distribution_df: pd.DataFrame,
+    cross_coverage_df: pd.DataFrame,
 ) -> None:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     overall_distribution_df.to_csv(DISTRIBUTION_FILE, index=False)
     category_distribution_df.to_csv(CATEGORY_DISTRIBUTION_FILE, index=False)
+    cross_coverage_df.to_csv(CROSS_COVERAGE_FILE, index=False)
     pd.DataFrame(
         [{"metric": key, "value": value} for key, value in metrics.items()]
     ).to_csv(METRICS_FILE, index=False)
@@ -308,6 +392,41 @@ def write_validation_report(
         "- As distribuicoes ficaram coerentes com a EDA temporal anterior: concentracao em dias uteis e relevancia clara de granularidades intradia e semanais.",
     ]
     REPORT_FILE.write_text("\n".join(report_lines), encoding="utf-8")
+
+    cross_report_lines = [
+        "# Features Cruzadas de Preco entre Categorias",
+        "",
+        f"- Gerado em: `{datetime.now().isoformat()}`",
+        f"- Fonte: `{SOURCE_DIR}`",
+        f"- Saida com features: `{OUTPUT_DIR}`",
+        "",
+        "## Regra de Pivot",
+        "",
+        "- O pivot usa apenas os produtos canonicos `UberX`, `Comfort` e `Black` para gerar `Price_UberX`, `Price_Comfort` e `Price_Black`.",
+        "- A chave do lookup e `RideID`, com deduplicacao rara em `RideID + ProductID` pelo menor `RideEstimativeID`, para privilegiar a primeira estimativa disponivel e evitar usar refreshes posteriores.",
+        "- O merge de volta na base principal e `many-to-one` por `RideID`, sem aumento do numero de linhas.",
+        "",
+        "## Regra DS de Uso sem Leakage",
+        "",
+        "- No modelo `UberX`, usar `Price_Comfort` e `Price_Black` como auxiliares e excluir `Price_UberX` da matriz de features.",
+        "- No modelo `Comfort`, usar `Price_UberX` e `Price_Black` como auxiliares e excluir `Price_Comfort`.",
+        "- No modelo `Black`, usar `Price_UberX` e `Price_Comfort` como auxiliares e excluir `Price_Black`.",
+        "- Como o schema nao traz timestamp proprio por estimativa, `RideEstimativeID` foi usado como melhor proxy de ordem dentro da mesma corrida.",
+        "",
+        "## Cobertura das Features Cruzadas",
+        "",
+        cross_coverage_df.to_markdown(index=False),
+        "",
+        "## Integridade",
+        "",
+        f"- Duplicatas canonicas colapsadas no pivot: `{metrics['canonical_duplicate_rows_collapsed']}`.",
+        f"- Corridas com as tres estimativas canonicas disponiveis: `{metrics['rides_with_all_three_canonical_prices']}`.",
+        f"- Linhas antes/depois do join: `{metrics['rows_processed']}` / `{metrics['rows_written']}`.",
+    ]
+    CROSS_REPORT_FILE.write_text(
+        "\n".join(cross_report_lines),
+        encoding="utf-8",
+    )
     log.info("Relatorios salvos em %s", REPORTS_DIR)
 
 
@@ -331,6 +450,7 @@ def main() -> dict:
         partitioning="hive",
     )
     holiday_index = build_brazil_holiday_index()
+    cross_price_lookup_df, cross_price_metrics = build_cross_price_lookup(dataset)
 
     metrics = {
         "rows_processed": 0,
@@ -338,10 +458,19 @@ def main() -> dict:
         "chunks_written": 0,
         "rows_on_disk": 0,
     }
+    metrics.update(cross_price_metrics)
     partition_row_counts: Counter = Counter()
     overall_counter: Counter = Counter()
     category_counter: Counter = Counter()
     target_category_totals = {category_id: 0 for category_id in TARGET_CATEGORIES}
+    cross_model_stats = {
+        product_name: {
+            "row_count": 0,
+            "both_cross_available": 0,
+            **{feature_name: 0 for feature_name in CROSS_PRICE_COLUMNS},
+        }
+        for product_name in CROSS_PRICE_PRODUCT_MAP
+    }
     partitioning = None
 
     for batch in dataset.to_batches(batch_size=BATCH_SIZE):
@@ -349,12 +478,32 @@ def main() -> dict:
         metrics["rows_processed"] += len(batch_df)
 
         enriched_df = add_temporal_features(batch_df, holiday_index)
+        enriched_df = add_cross_price_features(enriched_df, cross_price_lookup_df)
         update_overall_distribution(enriched_df, overall_counter)
         update_category_distribution(enriched_df, category_counter)
 
         for category_id in TARGET_CATEGORIES:
             target_category_totals[category_id] += int(
                 enriched_df["CategoryID"].eq(category_id).sum()
+            )
+
+        for product_name, own_feature in CROSS_PRICE_PRODUCT_MAP.items():
+            model_df = enriched_df.loc[enriched_df["ProductID"] == product_name].copy()
+            if model_df.empty:
+                continue
+
+            cross_model_stats[product_name]["row_count"] += int(len(model_df))
+            other_feature_names = [
+                feature_name
+                for feature_name in CROSS_PRICE_COLUMNS
+                if feature_name != own_feature
+            ]
+            for feature_name in CROSS_PRICE_COLUMNS:
+                cross_model_stats[product_name][feature_name] += int(
+                    model_df[feature_name].notna().sum()
+                )
+            cross_model_stats[product_name]["both_cross_available"] += int(
+                model_df[other_feature_names].notna().all(axis=1).sum()
             )
 
         partition_counts = (
@@ -406,6 +555,51 @@ def main() -> dict:
     for category_id, row_count in sorted(partition_row_counts.items(), key=lambda item: int(item[0])):
         metrics[f"partition_{category_id}_rows"] = int(row_count)
 
+    cross_coverage_rows = []
+    for product_name, own_feature in CROSS_PRICE_PRODUCT_MAP.items():
+        row_count = cross_model_stats[product_name]["row_count"]
+        for feature_name in CROSS_PRICE_COLUMNS:
+            cross_coverage_rows.append(
+                {
+                    "ModelProduct": product_name,
+                    "FeatureName": feature_name,
+                    "FeatureRole": (
+                        "target_equivalent"
+                        if feature_name == own_feature
+                        else "auxiliary_input"
+                    ),
+                    "available_rows": cross_model_stats[product_name][feature_name],
+                    "available_pct": round(
+                        (
+                            cross_model_stats[product_name][feature_name]
+                            / row_count
+                            * 100
+                        )
+                        if row_count
+                        else 0,
+                        4,
+                    ),
+                }
+            )
+        cross_coverage_rows.append(
+            {
+                "ModelProduct": product_name,
+                "FeatureName": "Both auxiliary prices",
+                "FeatureRole": "auxiliary_pair",
+                "available_rows": cross_model_stats[product_name]["both_cross_available"],
+                "available_pct": round(
+                    (
+                        cross_model_stats[product_name]["both_cross_available"]
+                        / row_count
+                        * 100
+                    )
+                    if row_count
+                    else 0,
+                    4,
+                ),
+            }
+        )
+
     overall_distribution_df = build_overall_distribution_df(
         overall_counter,
         metrics["rows_written"],
@@ -414,10 +608,12 @@ def main() -> dict:
         category_counter,
         target_category_totals,
     )
+    cross_coverage_df = build_cross_feature_coverage_df(cross_coverage_rows)
     write_validation_report(
         metrics,
         overall_distribution_df,
         category_distribution_df,
+        cross_coverage_df,
     )
 
     log.info("=" * 60)
