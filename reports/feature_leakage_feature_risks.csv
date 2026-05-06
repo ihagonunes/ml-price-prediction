@@ -1,0 +1,14 @@
+feature_group,leakage_risk,recommended_decision,rationale
+Create* temporais,low,Manter no baseline.,"Derivadas do timestamp de criacao da corrida, disponivel no momento de inferencia."
+Schedule* temporais,low,"Manter, desde que Schedule esteja disponivel na predicao.",Timestamp de agendamento e pre-evento; nao depende de resultado futuro da corrida.
+Updated* temporais,high,Excluir dos modelos de preco.,"Updated e posterior a Create em 100.0% das linhas, indicando forte risco de carregar informacao pos-evento."
+UserPriorRideCount / UserPriorPaidPriceMean,low,Manter no baseline.,"Calculadas com janela expansiva por UserID no nivel de RideID, sempre excluindo a corrida atual."
+UserPriorCategoryRideCount / UserPriorCategoryPriceMean,low,Manter no baseline.,"Calculadas com janela expansiva por UserID + CategoryID no nivel canonico RideID+CategoryID, sem uso de informacao futura."
+PriceWasCapped,high,Excluir dos modelos de preco.,Indicador derivado do proprio target Price no preprocessamento (ativo em 0.4991% das linhas).
+WaitingTimeWasCapped / FareIDWasImputed,low,Uso opcional; nao sao necessarias no baseline.,Flags de qualidade/transformacao de entrada; nao usam informacao futura do target.
+Cross own price (Price_UberX),high,Excluir da matriz de features do proprio modelo.,"Para linhas de UberX, Price_UberX coincide com o target Price em 99.9788% das linhas, caracterizando leakage direto."
+Cross own price (Price_Comfort),high,Excluir da matriz de features do proprio modelo.,"Para linhas de Comfort, Price_Comfort coincide com o target Price em 99.9777% das linhas, caracterizando leakage direto."
+Cross own price (Price_Black),high,Excluir da matriz de features do proprio modelo.,"Para linhas de Black, Price_Black coincide com o target Price em 99.9741% das linhas, caracterizando leakage direto."
+Cross auxiliar (UberX),medium,Manter com controle de disponibilidade e sem usar coluna propria.,As duas features auxiliares estao disponiveis em 50.2376% das linhas de UberX.
+Cross auxiliar (Comfort),medium,Manter com controle de disponibilidade e sem usar coluna propria.,As duas features auxiliares estao disponiveis em 61.3622% das linhas de Comfort.
+Cross auxiliar (Black),medium,Manter com controle de disponibilidade e sem usar coluna propria.,As duas features auxiliares estao disponiveis em 95.7478% das linhas de Black.

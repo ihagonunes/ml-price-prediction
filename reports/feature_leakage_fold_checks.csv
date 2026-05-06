@@ -1,0 +1,21 @@
+scope,split_name,split_type,category_id,category_name,train_rows,evaluation_rows,train_start,train_end,gap_start,gap_end,evaluation_start,evaluation_end,index_overlap,ride_overlap,temporal_order_ok,timestamp_order_ok,gap_order_ok,fold_valid
+category,fold_1,cv,2.0,UberX,27535,7647,2021-11-01,2022-01-11,2022-01-12,2022-01-18,2022-01-19,2022-02-15,0,0,True,True,True,True
+category,fold_2,cv,2.0,UberX,33773,8940,2021-11-01,2022-02-08,2022-02-09,2022-02-15,2022-02-16,2022-03-15,0,0,True,True,True,True
+category,fold_3,cv,2.0,UberX,41871,12896,2021-11-01,2022-03-08,2022-03-09,2022-03-15,2022-03-16,2022-04-12,0,0,True,True,True,True
+category,fold_4,cv,2.0,UberX,54095,15752,2021-11-01,2022-04-05,2022-04-06,2022-04-12,2022-04-13,2022-05-10,0,0,True,True,True,True
+category,holdout_test,holdout,2.0,UberX,73490,16456,2021-11-01,2022-05-10,2022-05-11,2022-05-17,2022-05-18,2022-06-14,0,0,True,True,True,True
+category,fold_1,cv,4.0,Uber Black,8052,2604,2021-11-01,2022-01-11,2022-01-12,2022-01-18,2022-01-19,2022-02-15,0,0,True,True,True,True
+category,fold_2,cv,4.0,Uber Black,10093,3342,2021-11-01,2022-02-08,2022-02-09,2022-02-15,2022-02-16,2022-03-15,0,0,True,True,True,True
+category,fold_3,cv,4.0,Uber Black,12992,5873,2021-11-01,2022-03-08,2022-03-09,2022-03-15,2022-03-16,2022-04-12,0,0,True,True,True,True
+category,fold_4,cv,4.0,Uber Black,18541,6238,2021-11-01,2022-04-05,2022-04-06,2022-04-12,2022-04-13,2022-05-10,0,0,True,True,True,True
+category,holdout_test,holdout,4.0,Uber Black,26385,7004,2021-11-01,2022-05-10,2022-05-11,2022-05-17,2022-05-18,2022-06-14,0,0,True,True,True,True
+category,fold_1,cv,9.0,Uber Comfort,14563,5536,2021-11-01,2022-01-11,2022-01-12,2022-01-18,2022-01-19,2022-02-15,0,0,True,True,True,True
+category,fold_2,cv,9.0,Uber Comfort,18980,6580,2021-11-01,2022-02-08,2022-02-09,2022-02-15,2022-02-16,2022-03-15,0,0,True,True,True,True
+category,fold_3,cv,9.0,Uber Comfort,24772,10979,2021-11-01,2022-03-08,2022-03-09,2022-03-15,2022-03-16,2022-04-12,0,0,True,True,True,True
+category,fold_4,cv,9.0,Uber Comfort,35107,11063,2021-11-01,2022-04-05,2022-04-06,2022-04-12,2022-04-13,2022-05-10,0,0,True,True,True,True
+category,holdout_test,holdout,9.0,Uber Comfort,49289,12038,2021-11-01,2022-05-10,2022-05-11,2022-05-17,2022-05-18,2022-06-14,0,0,True,True,True,True
+overall,fold_1,cv,,all,104318,38660,2021-11-01,2022-01-11,2022-01-12,2022-01-18,2022-01-19,2022-02-15,0,0,True,True,True,True
+overall,fold_2,cv,,all,135617,44373,2021-11-01,2022-02-08,2022-02-09,2022-02-15,2022-02-16,2022-03-15,0,0,True,True,True,True
+overall,fold_3,cv,,all,175178,72428,2021-11-01,2022-03-08,2022-03-09,2022-03-15,2022-03-16,2022-04-12,0,0,True,True,True,True
+overall,fold_4,cv,,all,242864,83632,2021-11-01,2022-04-05,2022-04-06,2022-04-12,2022-04-13,2022-05-10,0,0,True,True,True,True
+overall,holdout_test,holdout,,all,347134,90668,2021-11-01,2022-05-10,2022-05-11,2022-05-17,2022-05-18,2022-06-14,0,0,True,True,True,True

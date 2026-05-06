@@ -1,0 +1,9 @@
+metric,value
+ride_level_prior_count_inconsistencies,0
+category_level_prior_count_inconsistencies,0
+prior_ride_count_mismatch_rows,0
+prior_category_count_mismatch_rows,0
+negative_user_prior_ride_count_rows,0
+negative_user_prior_category_count_rows,0
+rows_with_prior_category_count_and_null_mean,0
+rows_with_prior_ride_count_and_null_paid_mean,426
