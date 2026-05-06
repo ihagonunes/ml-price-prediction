@@ -22,6 +22,7 @@ from utils import cast_object_columns_to_string, parse_datetime_columns, prepare
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
 REPORTS_DIR = BASE_DIR / "reports"
+ANALYTICAL_DIR = DATA_DIR / "analytical"
 SOURCE_DIR = DATA_DIR / "analytical_curated"
 OUTPUT_DIR = DATA_DIR / "features_temporal"
 
@@ -31,6 +32,8 @@ METRICS_FILE = REPORTS_DIR / "temporal_feature_metrics.csv"
 REPORT_FILE = REPORTS_DIR / "temporal_feature_report.md"
 CROSS_COVERAGE_FILE = REPORTS_DIR / "cross_price_feature_coverage.csv"
 CROSS_REPORT_FILE = REPORTS_DIR / "cross_price_feature_report.md"
+USER_HISTORY_COVERAGE_FILE = REPORTS_DIR / "user_history_feature_coverage.csv"
+USER_HISTORY_REPORT_FILE = REPORTS_DIR / "user_history_feature_report.md"
 
 BATCH_SIZE = 100_000
 TIMESTAMP_COLUMNS = ["Schedule", "Create", "Updated"]
@@ -46,6 +49,12 @@ CROSS_PRICE_PRODUCT_MAP = {
     "Black": "Price_Black",
 }
 CROSS_PRICE_COLUMNS = list(CROSS_PRICE_PRODUCT_MAP.values())
+USER_HISTORY_FEATURES = [
+    "UserPriorRideCount",
+    "UserPriorPaidPriceMean",
+    "UserPriorCategoryRideCount",
+    "UserPriorCategoryPriceMean",
+]
 DAY_OF_WEEK_NAMES = {
     0: "segunda",
     1: "terca",
@@ -207,6 +216,168 @@ def add_cross_price_features(
     return enriched
 
 
+def build_user_ride_history_lookup(
+    curated_dataset: ds.Dataset,
+    analytical_dataset: ds.Dataset,
+) -> tuple[pd.DataFrame, dict]:
+    ride_base_df = curated_dataset.to_table(
+        columns=["RideID", "UserID", "Create"]
+    ).to_pandas()
+    raw_ride_rows = len(ride_base_df)
+    ride_base_df = (
+        ride_base_df.sort_values(["RideID", "Create"], kind="stable")
+        .drop_duplicates(["RideID"], keep="first")
+        .reset_index(drop=True)
+    )
+
+    ride_price_df = analytical_dataset.to_table(
+        columns=["RideID", "RidePrice"]
+    ).to_pandas()
+    ride_price_df = (
+        ride_price_df.sort_values(["RideID"], kind="stable")
+        .drop_duplicates(["RideID"], keep="first")
+        .reset_index(drop=True)
+    )
+
+    ride_history_df = ride_base_df.merge(
+        ride_price_df,
+        on="RideID",
+        how="left",
+        validate="one_to_one",
+    )
+    ride_history_df["Create"] = pd.to_datetime(ride_history_df["Create"], errors="coerce")
+    ride_history_df = ride_history_df.sort_values(
+        ["UserID", "Create", "RideID"],
+        kind="stable",
+    ).reset_index(drop=True)
+
+    ride_history_df["UserPriorRideCount"] = (
+        ride_history_df.groupby("UserID", sort=False)
+        .cumcount()
+        .astype("int32")
+    )
+
+    paid_price = ride_history_df["RidePrice"].where(ride_history_df["RidePrice"] > 0)
+    paid_value = paid_price.fillna(0.0)
+    paid_flag = paid_price.notna().astype("int32")
+    ride_history_df["_paid_value"] = paid_value
+    ride_history_df["_paid_flag"] = paid_flag
+    grouped_user = ride_history_df.groupby("UserID", sort=False)
+    prior_paid_sum = grouped_user["_paid_value"].cumsum() - ride_history_df["_paid_value"]
+    prior_paid_count = grouped_user["_paid_flag"].cumsum() - ride_history_df["_paid_flag"]
+    ride_history_df["UserPriorPaidPriceMean"] = np.where(
+        prior_paid_count > 0,
+        prior_paid_sum / prior_paid_count,
+        np.nan,
+    ).astype("float32")
+    ride_history_df = ride_history_df.drop(columns=["Create", "RidePrice", "_paid_value", "_paid_flag"])
+
+    lookup_df = ride_history_df[
+        ["RideID", "UserPriorRideCount", "UserPriorPaidPriceMean"]
+    ].copy()
+    metrics = {
+        "user_history_ride_rows_scanned": int(raw_ride_rows),
+        "user_history_unique_rides": int(len(lookup_df)),
+        "user_history_unique_users": int(ride_base_df["UserID"].nunique()),
+        "user_history_duplicate_ride_rows_collapsed": int(raw_ride_rows - len(lookup_df)),
+        "user_history_rides_with_valid_paid_price": int((paid_price.notna()).sum()),
+        "user_history_rows_with_prior_paid_mean": int(lookup_df["UserPriorPaidPriceMean"].notna().sum()),
+        "user_history_cold_start_rides": int((lookup_df["UserPriorRideCount"] == 0).sum()),
+        "user_history_prior_ride_count_p50": int(lookup_df["UserPriorRideCount"].quantile(0.50)),
+        "user_history_prior_ride_count_p90": int(lookup_df["UserPriorRideCount"].quantile(0.90)),
+        "user_history_prior_ride_count_p99": int(lookup_df["UserPriorRideCount"].quantile(0.99)),
+    }
+    return lookup_df, metrics
+
+
+def build_user_category_history_lookup(
+    curated_dataset: ds.Dataset,
+) -> tuple[pd.DataFrame, dict]:
+    category_base_df = curated_dataset.to_table(
+        columns=["RideID", "RideEstimativeID", "UserID", "Create", "CategoryID", "Price"]
+    ).to_pandas()
+    raw_category_rows = len(category_base_df)
+    category_base_df["Create"] = pd.to_datetime(category_base_df["Create"], errors="coerce")
+    category_base_df = category_base_df.sort_values(
+        ["RideID", "CategoryID", "RideEstimativeID"],
+        kind="stable",
+    )
+    canonical_category_df = (
+        category_base_df
+        .drop_duplicates(["RideID", "CategoryID"], keep="first")
+        .sort_values(
+            ["UserID", "CategoryID", "Create", "RideID", "RideEstimativeID"],
+            kind="stable",
+        )
+        .reset_index(drop=True)
+    )
+
+    category_group = canonical_category_df.groupby(["UserID", "CategoryID"], sort=False)
+    canonical_category_df["UserPriorCategoryRideCount"] = (
+        category_group.cumcount().astype("int32")
+    )
+    prior_category_sum = category_group["Price"].cumsum() - canonical_category_df["Price"]
+    canonical_category_df["UserPriorCategoryPriceMean"] = np.where(
+        canonical_category_df["UserPriorCategoryRideCount"] > 0,
+        prior_category_sum / canonical_category_df["UserPriorCategoryRideCount"],
+        np.nan,
+    ).astype("float32")
+
+    lookup_df = canonical_category_df[
+        ["RideID", "CategoryID", "UserPriorCategoryRideCount", "UserPriorCategoryPriceMean"]
+    ].copy()
+    metrics = {
+        "user_category_history_rows_scanned": int(raw_category_rows),
+        "user_category_history_unique_ride_category_pairs": int(len(lookup_df)),
+        "user_category_history_duplicate_rows_collapsed": int(raw_category_rows - len(lookup_df)),
+        "user_category_history_rows_with_prior_category_mean": int(
+            lookup_df["UserPriorCategoryPriceMean"].notna().sum()
+        ),
+        "user_category_history_cold_start_pairs": int(
+            (lookup_df["UserPriorCategoryRideCount"] == 0).sum()
+        ),
+        "user_category_history_prior_count_p50": int(
+            lookup_df["UserPriorCategoryRideCount"].quantile(0.50)
+        ),
+        "user_category_history_prior_count_p90": int(
+            lookup_df["UserPriorCategoryRideCount"].quantile(0.90)
+        ),
+        "user_category_history_prior_count_p99": int(
+            lookup_df["UserPriorCategoryRideCount"].quantile(0.99)
+        ),
+    }
+    return lookup_df, metrics
+
+
+def add_user_history_features(
+    df: pd.DataFrame,
+    user_ride_history_lookup_df: pd.DataFrame,
+    user_category_history_lookup_df: pd.DataFrame,
+) -> pd.DataFrame:
+    enriched = df.merge(
+        user_ride_history_lookup_df,
+        on="RideID",
+        how="left",
+        validate="many_to_one",
+    )
+    enriched = enriched.merge(
+        user_category_history_lookup_df,
+        on=["RideID", "CategoryID"],
+        how="left",
+        validate="many_to_one",
+    )
+    if enriched["UserPriorRideCount"].isna().any():
+        raise ValueError("Falha ao popular UserPriorRideCount para todas as linhas.")
+    if enriched["UserPriorCategoryRideCount"].isna().any():
+        raise ValueError("Falha ao popular UserPriorCategoryRideCount para todas as linhas.")
+
+    enriched["UserPriorRideCount"] = enriched["UserPriorRideCount"].astype("int32")
+    enriched["UserPriorCategoryRideCount"] = enriched["UserPriorCategoryRideCount"].astype("int32")
+    enriched["UserPriorPaidPriceMean"] = enriched["UserPriorPaidPriceMean"].astype("float32")
+    enriched["UserPriorCategoryPriceMean"] = enriched["UserPriorCategoryPriceMean"].astype("float32")
+    return enriched
+
+
 def update_overall_distribution(
     df: pd.DataFrame,
     counter: Counter,
@@ -299,16 +470,28 @@ def build_cross_feature_coverage_df(
     ).reset_index(drop=True)
 
 
+def build_user_history_coverage_df(
+    model_metrics: list[dict],
+) -> pd.DataFrame:
+    coverage_df = pd.DataFrame(model_metrics)
+    return coverage_df.sort_values(
+        by=["CategoryID", "FeatureRole", "FeatureName"],
+        kind="stable",
+    ).reset_index(drop=True)
+
+
 def write_validation_report(
     metrics: dict,
     overall_distribution_df: pd.DataFrame,
     category_distribution_df: pd.DataFrame,
     cross_coverage_df: pd.DataFrame,
+    user_history_coverage_df: pd.DataFrame,
 ) -> None:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     overall_distribution_df.to_csv(DISTRIBUTION_FILE, index=False)
     category_distribution_df.to_csv(CATEGORY_DISTRIBUTION_FILE, index=False)
     cross_coverage_df.to_csv(CROSS_COVERAGE_FILE, index=False)
+    user_history_coverage_df.to_csv(USER_HISTORY_COVERAGE_FILE, index=False)
     pd.DataFrame(
         [{"metric": key, "value": value} for key, value in metrics.items()]
     ).to_csv(METRICS_FILE, index=False)
@@ -427,6 +610,51 @@ def write_validation_report(
         "\n".join(cross_report_lines),
         encoding="utf-8",
     )
+
+    user_history_report_lines = [
+        "# Features Historicas por Usuario",
+        "",
+        f"- Gerado em: `{datetime.now().isoformat()}`",
+        f"- Fonte principal: `{SOURCE_DIR}`",
+        f"- Fonte de preco pago historico: `{ANALYTICAL_DIR}`",
+        f"- Saida com features: `{OUTPUT_DIR}`",
+        "",
+        "## Features Criadas",
+        "",
+        "- `UserPriorRideCount`: quantidade de corridas anteriores do usuario no nivel de `RideID`.",
+        "- `UserPriorPaidPriceMean`: media expansiva do `RidePrice` das corridas anteriores do usuario, excluindo o registro atual.",
+        "- `UserPriorCategoryRideCount`: quantidade de ocorrencias anteriores do usuario na mesma `CategoryID`, calculada no nivel canonico de `RideID + CategoryID`.",
+        "- `UserPriorCategoryPriceMean`: ticket medio historico do usuario para a mesma `CategoryID`, usando o `Price` canonico anterior e excluindo a corrida atual.",
+        "",
+        "## Regra Anti-Leakage",
+        "",
+        "- A ancora temporal e `Create`, que ja foi validada como o melhor indice temporal do projeto.",
+        "- As features gerais do usuario sao calculadas no nivel de `RideID`, evitando que varias estimativas da mesma corrida pesem mais de uma vez.",
+        "- As features por categoria usam uma versao canonica de `RideID + CategoryID`, deduplicada pelo menor `RideEstimativeID`, para evitar leakage entre ofertas repetidas da mesma corrida.",
+        "- Em ambos os casos, a janela e expansiva e exclui o registro corrente via `cumcount` e `cumsum` com deslocamento logico.",
+        "",
+        "## Decisao DS",
+        "",
+        "- `UserPriorRideCount` captura maturidade e frequencia de uso do cliente.",
+        "- `UserPriorPaidPriceMean` aproxima o ticket historico real do usuario e ajuda a separar perfis sensiveis a preco de perfis premium.",
+        "- `UserPriorCategoryRideCount` e `UserPriorCategoryPriceMean` trazem preferencia e faixa de preco historica por categoria, sinal especialmente util para `UberX`, `Comfort` e `Black`.",
+        "",
+        "## Cobertura por Categoria-Alvo",
+        "",
+        user_history_coverage_df.to_markdown(index=False),
+        "",
+        "## Integridade",
+        "",
+        f"- Linhas antes/depois do pipeline: `{metrics['rows_processed']}` / `{metrics['rows_written']}`.",
+        f"- Duplicatas colapsadas no historico por corrida: `{metrics['user_history_duplicate_ride_rows_collapsed']}`.",
+        f"- Duplicatas colapsadas no historico por `RideID + CategoryID`: `{metrics['user_category_history_duplicate_rows_collapsed']}`.",
+        f"- Cold start no nivel de corrida: `{metrics['user_history_cold_start_rides']}` corridas unicas.",
+        f"- Cold start no nivel de categoria: `{metrics['user_category_history_cold_start_pairs']}` pares canonicos `RideID + CategoryID`.",
+    ]
+    USER_HISTORY_REPORT_FILE.write_text(
+        "\n".join(user_history_report_lines),
+        encoding="utf-8",
+    )
     log.info("Relatorios salvos em %s", REPORTS_DIR)
 
 
@@ -436,11 +664,13 @@ def write_validation_report(
 
 def main() -> dict:
     log.info("=" * 60)
-    log.info("Gerando features temporais")
+    log.info("Gerando camada de features")
     log.info("=" * 60)
 
     if not SOURCE_DIR.exists():
         raise FileNotFoundError(f"Dataset curado nao encontrado em {SOURCE_DIR}")
+    if not ANALYTICAL_DIR.exists():
+        raise FileNotFoundError(f"Dataset analitico nao encontrado em {ANALYTICAL_DIR}")
 
     prepare_output_dir(OUTPUT_DIR, DATA_DIR)
 
@@ -449,8 +679,20 @@ def main() -> dict:
         format="parquet",
         partitioning="hive",
     )
+    analytical_dataset = ds.dataset(
+        ANALYTICAL_DIR,
+        format="parquet",
+        partitioning="hive",
+    )
     holiday_index = build_brazil_holiday_index()
     cross_price_lookup_df, cross_price_metrics = build_cross_price_lookup(dataset)
+    user_ride_history_lookup_df, user_ride_history_metrics = build_user_ride_history_lookup(
+        dataset,
+        analytical_dataset,
+    )
+    user_category_history_lookup_df, user_category_history_metrics = (
+        build_user_category_history_lookup(dataset)
+    )
 
     metrics = {
         "rows_processed": 0,
@@ -459,6 +701,8 @@ def main() -> dict:
         "rows_on_disk": 0,
     }
     metrics.update(cross_price_metrics)
+    metrics.update(user_ride_history_metrics)
+    metrics.update(user_category_history_metrics)
     partition_row_counts: Counter = Counter()
     overall_counter: Counter = Counter()
     category_counter: Counter = Counter()
@@ -471,6 +715,22 @@ def main() -> dict:
         }
         for product_name in CROSS_PRICE_PRODUCT_MAP
     }
+    user_history_model_stats = {
+        category_id: {
+            "row_count": 0,
+            "prior_ride_rows": 0,
+            "prior_paid_mean_rows": 0,
+            "prior_category_rows": 0,
+            "prior_category_mean_rows": 0,
+        }
+        for category_id in TARGET_CATEGORIES
+    }
+    user_history_overall_stats = {
+        "prior_ride_rows": 0,
+        "prior_paid_mean_rows": 0,
+        "prior_category_rows": 0,
+        "prior_category_mean_rows": 0,
+    }
     partitioning = None
 
     for batch in dataset.to_batches(batch_size=BATCH_SIZE):
@@ -479,12 +739,47 @@ def main() -> dict:
 
         enriched_df = add_temporal_features(batch_df, holiday_index)
         enriched_df = add_cross_price_features(enriched_df, cross_price_lookup_df)
+        enriched_df = add_user_history_features(
+            enriched_df,
+            user_ride_history_lookup_df,
+            user_category_history_lookup_df,
+        )
         update_overall_distribution(enriched_df, overall_counter)
         update_category_distribution(enriched_df, category_counter)
 
+        user_history_overall_stats["prior_ride_rows"] += int(
+            enriched_df["UserPriorRideCount"].gt(0).sum()
+        )
+        user_history_overall_stats["prior_paid_mean_rows"] += int(
+            enriched_df["UserPriorPaidPriceMean"].notna().sum()
+        )
+        user_history_overall_stats["prior_category_rows"] += int(
+            enriched_df["UserPriorCategoryRideCount"].gt(0).sum()
+        )
+        user_history_overall_stats["prior_category_mean_rows"] += int(
+            enriched_df["UserPriorCategoryPriceMean"].notna().sum()
+        )
+
         for category_id in TARGET_CATEGORIES:
-            target_category_totals[category_id] += int(
-                enriched_df["CategoryID"].eq(category_id).sum()
+            category_mask = enriched_df["CategoryID"].eq(category_id)
+            category_row_count = int(category_mask.sum())
+            target_category_totals[category_id] += category_row_count
+            if not category_row_count:
+                continue
+
+            category_df = enriched_df.loc[category_mask]
+            user_history_model_stats[category_id]["row_count"] += category_row_count
+            user_history_model_stats[category_id]["prior_ride_rows"] += int(
+                category_df["UserPriorRideCount"].gt(0).sum()
+            )
+            user_history_model_stats[category_id]["prior_paid_mean_rows"] += int(
+                category_df["UserPriorPaidPriceMean"].notna().sum()
+            )
+            user_history_model_stats[category_id]["prior_category_rows"] += int(
+                category_df["UserPriorCategoryRideCount"].gt(0).sum()
+            )
+            user_history_model_stats[category_id]["prior_category_mean_rows"] += int(
+                category_df["UserPriorCategoryPriceMean"].notna().sum()
             )
 
         for product_name, own_feature in CROSS_PRICE_PRODUCT_MAP.items():
@@ -555,6 +850,13 @@ def main() -> dict:
     for category_id, row_count in sorted(partition_row_counts.items(), key=lambda item: int(item[0])):
         metrics[f"partition_{category_id}_rows"] = int(row_count)
 
+    for metric_name, row_count in user_history_overall_stats.items():
+        metrics[metric_name] = int(row_count)
+        metrics[f"{metric_name}_pct"] = round(
+            (row_count / metrics["rows_written"]) * 100,
+            4,
+        )
+
     cross_coverage_rows = []
     for product_name, own_feature in CROSS_PRICE_PRODUCT_MAP.items():
         row_count = cross_model_stats[product_name]["row_count"]
@@ -600,6 +902,83 @@ def main() -> dict:
             }
         )
 
+    user_history_coverage_rows = []
+    for category_id in TARGET_CATEGORIES:
+        row_count = user_history_model_stats[category_id]["row_count"]
+        category_name = TARGET_CATEGORY_NAMES[category_id]
+        user_history_coverage_rows.extend(
+            [
+                {
+                    "CategoryID": category_id,
+                    "CategoryName": category_name,
+                    "FeatureName": "UserPriorRideCount",
+                    "FeatureRole": "history_count",
+                    "available_rows": user_history_model_stats[category_id]["prior_ride_rows"],
+                    "available_pct": round(
+                        (
+                            user_history_model_stats[category_id]["prior_ride_rows"]
+                            / row_count
+                            * 100
+                        )
+                        if row_count
+                        else 0,
+                        4,
+                    ),
+                },
+                {
+                    "CategoryID": category_id,
+                    "CategoryName": category_name,
+                    "FeatureName": "UserPriorPaidPriceMean",
+                    "FeatureRole": "history_value",
+                    "available_rows": user_history_model_stats[category_id]["prior_paid_mean_rows"],
+                    "available_pct": round(
+                        (
+                            user_history_model_stats[category_id]["prior_paid_mean_rows"]
+                            / row_count
+                            * 100
+                        )
+                        if row_count
+                        else 0,
+                        4,
+                    ),
+                },
+                {
+                    "CategoryID": category_id,
+                    "CategoryName": category_name,
+                    "FeatureName": "UserPriorCategoryRideCount",
+                    "FeatureRole": "category_count",
+                    "available_rows": user_history_model_stats[category_id]["prior_category_rows"],
+                    "available_pct": round(
+                        (
+                            user_history_model_stats[category_id]["prior_category_rows"]
+                            / row_count
+                            * 100
+                        )
+                        if row_count
+                        else 0,
+                        4,
+                    ),
+                },
+                {
+                    "CategoryID": category_id,
+                    "CategoryName": category_name,
+                    "FeatureName": "UserPriorCategoryPriceMean",
+                    "FeatureRole": "category_value",
+                    "available_rows": user_history_model_stats[category_id]["prior_category_mean_rows"],
+                    "available_pct": round(
+                        (
+                            user_history_model_stats[category_id]["prior_category_mean_rows"]
+                            / row_count
+                            * 100
+                        )
+                        if row_count
+                        else 0,
+                        4,
+                    ),
+                },
+            ]
+        )
+
     overall_distribution_df = build_overall_distribution_df(
         overall_counter,
         metrics["rows_written"],
@@ -609,15 +988,19 @@ def main() -> dict:
         target_category_totals,
     )
     cross_coverage_df = build_cross_feature_coverage_df(cross_coverage_rows)
+    user_history_coverage_df = build_user_history_coverage_df(
+        user_history_coverage_rows
+    )
     write_validation_report(
         metrics,
         overall_distribution_df,
         category_distribution_df,
         cross_coverage_df,
+        user_history_coverage_df,
     )
 
     log.info("=" * 60)
-    log.info("Features temporais geradas com sucesso")
+    log.info("Camada de features gerada com sucesso")
     log.info("=" * 60)
     return metrics
 
