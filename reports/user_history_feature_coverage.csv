@@ -1,0 +1,13 @@
+CategoryID,CategoryName,FeatureName,FeatureRole,available_rows,available_pct
+2,UberX,UserPriorCategoryRideCount,category_count,700404,98.6421
+2,UberX,UserPriorCategoryPriceMean,category_value,700404,98.6421
+2,UberX,UserPriorRideCount,history_count,700406,98.6423
+2,UberX,UserPriorPaidPriceMean,history_value,700331,98.6318
+4,Uber Black,UserPriorCategoryRideCount,category_count,122301,97.8557
+4,Uber Black,UserPriorCategoryPriceMean,category_value,122301,97.8557
+4,Uber Black,UserPriorRideCount,history_count,122738,98.2053
+4,Uber Black,UserPriorPaidPriceMean,history_value,122699,98.1741
+9,Uber Comfort,UserPriorCategoryRideCount,category_count,269164,98.1834
+9,Uber Comfort,UserPriorCategoryPriceMean,category_value,269164,98.1834
+9,Uber Comfort,UserPriorRideCount,history_count,269565,98.3297
+9,Uber Comfort,UserPriorPaidPriceMean,history_value,269483,98.2998

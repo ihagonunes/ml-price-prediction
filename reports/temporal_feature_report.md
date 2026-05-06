@@ -1,6 +1,6 @@
 # Validacao das Features Temporais
 
-- Gerado em: `2026-05-05T16:40:58.972607`
+- Gerado em: `2026-05-05T21:02:20.107315`
 - Fonte: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical_curated`
 - Saida com features: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\features_temporal`
 - Linhas processadas: `1999782`
