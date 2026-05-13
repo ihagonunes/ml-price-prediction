@@ -9,16 +9,82 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pyarrow.dataset as ds
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import Lasso, LinearRegression, Ridge
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    r2_score,
+)
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-
-# ============================================================
-# CONFIGURACAO
-# ============================================================
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
 REPORTS_DIR = BASE_DIR / "reports"
+FINAL_FEATURES_DIR = DATA_DIR / "final_features"
+
+BASELINE_FOLD_METRICS_FILE = REPORTS_DIR / "baseline_tscv_fold_metrics.csv"
+BASELINE_SUMMARY_FILE = REPORTS_DIR / "baseline_tscv_summary.csv"
+BASELINE_REPORT_FILE = REPORTS_DIR / "baseline_tscv_report.md"
+
+CATEGORY_DATASETS = {
+    2: {
+        "dataset_name": "UberX",
+        "file_name": "features_uberx.parquet",
+        "auxiliary_cross_columns": ["Price_Comfort", "Price_Black"],
+    },
+    9: {
+        "dataset_name": "Uber Comfort",
+        "file_name": "features_comfort.parquet",
+        "auxiliary_cross_columns": ["Price_UberX", "Price_Black"],
+    },
+    4: {
+        "dataset_name": "Uber Black",
+        "file_name": "features_black.parquet",
+        "auxiliary_cross_columns": ["Price_UberX", "Price_Comfort"],
+    },
+}
+
+NUMERIC_FEATURE_COLUMNS = [
+    "WaitingTime",
+    "Fee",
+    "TotalUsers",
+    "RideStatusID",
+    "CompanyID",
+    "ProductProviderID",
+    "OriginLat",
+    "OriginLng",
+    "DestinationLat",
+    "DestinationLng",
+    "ScheduleHour",
+    "ScheduleDayOfWeek",
+    "ScheduleMonth",
+    "ScheduleQuarter",
+    "CreateHour",
+    "CreateDayOfWeek",
+    "CreateMonth",
+    "CreateQuarter",
+    "UserPriorRideCount",
+    "UserPriorPaidPriceMean",
+    "UserPriorCategoryRideCount",
+    "UserPriorCategoryPriceMean",
+]
+BOOLEAN_FEATURE_COLUMNS = [
+    "ScheduleIsHolidayBR",
+    "CreateIsHolidayBR",
+    "FareIDWasImputed",
+    "WaitingTimeWasCapped",
+]
+CATEGORICAL_FEATURE_COLUMNS = [
+    "ProductID",
+]
+TARGET_COLUMN = "Price"
+TIME_ORDER_COLUMN = "CreateDate"
 
 
 @dataclass(frozen=True)
@@ -47,22 +113,13 @@ class SplitWindow:
     evaluation_end: pd.Timestamp
 
 
-# ============================================================
-# LOGGING
-# ============================================================
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
-
 log = logging.getLogger(__name__)
 
-
-# ============================================================
-# LEITURA
-# ============================================================
 
 def load_temporal_frame(
     config: TemporalSplitConfig,
@@ -99,10 +156,10 @@ def load_temporal_frame(
         frame[config.category_column],
         errors="coerce",
     ).astype("Int64")
-    frame["CreateDate"] = frame[config.time_column].dt.floor("D")
-    frame = frame.loc[frame["CreateDate"] >= pd.Timestamp(config.regime_start)].copy()
+    frame[TIME_ORDER_COLUMN] = frame[config.time_column].dt.floor("D")
+    frame = frame.loc[frame[TIME_ORDER_COLUMN] >= pd.Timestamp(config.regime_start)].copy()
     frame = frame.sort_values(
-        by=["CreateDate", config.time_column, config.ride_column],
+        by=[TIME_ORDER_COLUMN, config.time_column, config.ride_column],
         kind="stable",
     ).reset_index(drop=True)
 
@@ -110,14 +167,10 @@ def load_temporal_frame(
         "Base temporal carregada | linhas=%s | rides=%s | datas=%s",
         len(frame),
         frame[config.ride_column].nunique(),
-        frame["CreateDate"].nunique(),
+        frame[TIME_ORDER_COLUMN].nunique(),
     )
     return frame
 
-
-# ============================================================
-# SPLIT TEMPORAL
-# ============================================================
 
 def build_time_series_splitter(config: TemporalSplitConfig) -> TimeSeriesSplit:
     return TimeSeriesSplit(
@@ -131,7 +184,7 @@ def build_split_windows(
     frame: pd.DataFrame,
     config: TemporalSplitConfig,
 ) -> tuple[list[SplitWindow], SplitWindow]:
-    unique_dates = pd.Index(sorted(frame["CreateDate"].dropna().unique()))
+    unique_dates = pd.Index(sorted(frame[TIME_ORDER_COLUMN].dropna().unique()))
     required_days = (
         config.holdout_window_days
         + config.gap_days
@@ -193,11 +246,11 @@ def apply_split_window(
     config: TemporalSplitConfig,
     category_id: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    train_mask = frame["CreateDate"].between(
+    train_mask = frame[TIME_ORDER_COLUMN].between(
         split_window.train_start,
         split_window.train_end,
     )
-    evaluation_mask = frame["CreateDate"].between(
+    evaluation_mask = frame[TIME_ORDER_COLUMN].between(
         split_window.evaluation_start,
         split_window.evaluation_end,
     )
@@ -245,10 +298,6 @@ def get_holdout_split(
     return holdout_window, train_indices, evaluation_indices
 
 
-# ============================================================
-# VALIDACAO + SUMARIOS
-# ============================================================
-
 def summarize_split_window(
     frame: pd.DataFrame,
     split_window: SplitWindow,
@@ -288,13 +337,13 @@ def summarize_split_window(
         ),
         "evaluation_start": split_window.evaluation_start.date().isoformat(),
         "evaluation_end": split_window.evaluation_end.date().isoformat(),
-        "train_days": int(train_frame["CreateDate"].nunique()),
+        "train_days": int(train_frame[TIME_ORDER_COLUMN].nunique()),
         "gap_days": (
             int((split_window.gap_end - split_window.gap_start).days + 1)
             if split_window.gap_start is not None and split_window.gap_end is not None
             else 0
         ),
-        "evaluation_days": int(evaluation_frame["CreateDate"].nunique()),
+        "evaluation_days": int(evaluation_frame[TIME_ORDER_COLUMN].nunique()),
         "train_rows": int(len(train_frame)),
         "evaluation_rows": int(len(evaluation_frame)),
         "train_unique_rides": int(train_frame[config.ride_column].nunique()),
@@ -369,7 +418,7 @@ def write_strategy_report(
         "",
         f"- Gerado em: `{datetime.now().isoformat()}`",
         f"- Fonte: `{config.source_dir}`",
-        f"- Regime usado para modelagem: `{config.regime_start}` ate `{frame['CreateDate'].max().date().isoformat()}`",
+        f"- Regime usado para modelagem: `{config.regime_start}` ate `{frame[TIME_ORDER_COLUMN].max().date().isoformat()}`",
         "",
         "## Decisao DS",
         "",
@@ -406,7 +455,7 @@ def write_strategy_report(
             f"`{int(overall_df['ride_overlap'].sum())}` em todos os splits."
         ),
         (
-            f"- Cobertura disponivel no regime escolhido: `{frame['CreateDate'].nunique()}` dias, "
+            f"- Cobertura disponivel no regime escolhido: `{frame[TIME_ORDER_COLUMN].nunique()}` dias, "
             f"`{len(frame)}` linhas e `{frame[config.ride_column].nunique()}` corridas unicas."
         ),
         *target_volume_lines,
@@ -426,13 +475,331 @@ def write_strategy_report(
     log.info("Relatorios salvos em %s", REPORTS_DIR)
 
 
-# ============================================================
-# MAIN
-# ============================================================
+def load_category_feature_frame(
+    category_id: int,
+    config: TemporalSplitConfig,
+) -> pd.DataFrame:
+    dataset_spec = CATEGORY_DATASETS[category_id]
+    dataset_path = FINAL_FEATURES_DIR / dataset_spec["file_name"]
+    if not dataset_path.exists():
+        raise FileNotFoundError(f"Dataset final nao encontrado em {dataset_path}")
 
-def main() -> tuple[pd.DataFrame, pd.DataFrame]:
+    frame = ds.dataset(dataset_path, format="parquet").to_table().to_pandas()
+    frame[config.time_column] = pd.to_datetime(
+        frame[config.time_column],
+        errors="coerce",
+    )
+    if frame[config.time_column].isna().any():
+        raise ValueError(
+            f"Foram encontrados timestamps invalidos em {config.time_column} para {dataset_spec['dataset_name']}."
+        )
+
+    frame[TIME_ORDER_COLUMN] = pd.to_datetime(
+        frame[TIME_ORDER_COLUMN],
+        errors="coerce",
+    )
+    if frame[TIME_ORDER_COLUMN].isna().any():
+        raise ValueError(
+            f"Foram encontrados timestamps invalidos em {TIME_ORDER_COLUMN} para {dataset_spec['dataset_name']}."
+        )
+
+    frame = frame.loc[frame[TIME_ORDER_COLUMN] >= pd.Timestamp(config.regime_start)].copy()
+    frame = frame.sort_values(
+        by=[TIME_ORDER_COLUMN, config.time_column, config.ride_column, "RideEstimativeID"],
+        kind="stable",
+    ).reset_index(drop=True)
+
+    for column in BOOLEAN_FEATURE_COLUMNS:
+        if column in frame.columns:
+            frame[column] = frame[column].astype("int8")
+    for column in CATEGORICAL_FEATURE_COLUMNS:
+        if column in frame.columns:
+            frame[column] = frame[column].astype("string")
+
+    log.info(
+        "Dataset final carregado | categoria=%s | linhas=%s | datas=%s",
+        dataset_spec["dataset_name"],
+        len(frame),
+        frame[TIME_ORDER_COLUMN].nunique(),
+    )
+    return frame
+
+
+def get_feature_columns(
+    category_id: int,
+    frame: pd.DataFrame,
+) -> tuple[list[str], list[str]]:
+    dataset_spec = CATEGORY_DATASETS[category_id]
+    numeric_columns = (
+        NUMERIC_FEATURE_COLUMNS
+        + BOOLEAN_FEATURE_COLUMNS
+        + dataset_spec["auxiliary_cross_columns"]
+    )
+
+    missing_numeric = sorted(set(numeric_columns).difference(frame.columns))
+    missing_categorical = sorted(set(CATEGORICAL_FEATURE_COLUMNS).difference(frame.columns))
+    if missing_numeric or missing_categorical:
+        raise ValueError(
+            "Colunas esperadas ausentes na base final. "
+            f"Numericas faltantes={missing_numeric} | Categoricas faltantes={missing_categorical}"
+        )
+
+    return numeric_columns, CATEGORICAL_FEATURE_COLUMNS
+
+
+def build_baseline_models(
+    numeric_columns: list[str],
+    categorical_columns: list[str],
+) -> dict[str, Pipeline]:
+    numeric_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
+    )
+    categorical_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            (
+                "onehot",
+                OneHotEncoder(
+                    handle_unknown="ignore",
+                    min_frequency=5,
+                    sparse_output=False,
+                ),
+            ),
+        ]
+    )
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("numeric", numeric_transformer, numeric_columns),
+            ("categorical", categorical_transformer, categorical_columns),
+        ],
+        remainder="drop",
+        sparse_threshold=0.0,
+    )
+
+    return {
+        "LinearRegression": Pipeline(
+            steps=[
+                ("preprocessor", preprocessor),
+                ("model", LinearRegression(n_jobs=-1)),
+            ]
+        ),
+        "Ridge": Pipeline(
+            steps=[
+                ("preprocessor", preprocessor),
+                ("model", Ridge(alpha=1.0)),
+            ]
+        ),
+        "Lasso": Pipeline(
+            steps=[
+                ("preprocessor", preprocessor),
+                (
+                    "model",
+                    Lasso(
+                        alpha=0.001,
+                        max_iter=20000,
+                        tol=1e-3,
+                        selection="random",
+                        random_state=42,
+                    ),
+                ),
+            ]
+        ),
+    }
+
+
+def apply_split_window_to_category_frame(
+    frame: pd.DataFrame,
+    split_window: SplitWindow,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    train_mask = frame[TIME_ORDER_COLUMN].between(
+        split_window.train_start,
+        split_window.train_end,
+    )
+    evaluation_mask = frame[TIME_ORDER_COLUMN].between(
+        split_window.evaluation_start,
+        split_window.evaluation_end,
+    )
+    train_frame = frame.loc[train_mask].copy()
+    evaluation_frame = frame.loc[evaluation_mask].copy()
+    return train_frame, evaluation_frame
+
+
+def compute_regression_metrics(
+    y_true: pd.Series,
+    predictions: np.ndarray,
+) -> dict[str, float]:
+    return {
+        "MAE": float(mean_absolute_error(y_true, predictions)),
+        "RMSE": float(np.sqrt(mean_squared_error(y_true, predictions))),
+        "MAPE": float(mean_absolute_percentage_error(y_true, predictions) * 100),
+        "R2": float(r2_score(y_true, predictions)),
+    }
+
+
+def run_baseline_tscv(
+    config: TemporalSplitConfig,
+    cv_windows: list[SplitWindow],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    fold_rows: list[dict] = []
+
+    for category_id in config.target_categories:
+        dataset_spec = CATEGORY_DATASETS[category_id]
+        category_frame = load_category_feature_frame(category_id, config)
+        numeric_columns, categorical_columns = get_feature_columns(
+            category_id,
+            category_frame,
+        )
+
+        for split_window in cv_windows:
+            train_frame, evaluation_frame = apply_split_window_to_category_frame(
+                category_frame,
+                split_window,
+            )
+            if train_frame.empty or evaluation_frame.empty:
+                raise ValueError(
+                    f"Split sem dados para {dataset_spec['dataset_name']} em {split_window.name}."
+                )
+
+            ride_overlap = len(
+                set(train_frame[config.ride_column].astype("int64"))
+                .intersection(set(evaluation_frame[config.ride_column].astype("int64")))
+            )
+            if ride_overlap != 0:
+                raise ValueError(
+                    f"RideIDs compartilhados entre treino e validacao para {dataset_spec['dataset_name']} em {split_window.name}."
+                )
+
+            x_train = train_frame[numeric_columns + categorical_columns].copy()
+            y_train = train_frame[TARGET_COLUMN].astype("float64")
+            x_evaluation = evaluation_frame[numeric_columns + categorical_columns].copy()
+            y_evaluation = evaluation_frame[TARGET_COLUMN].astype("float64")
+
+            model_registry = build_baseline_models(
+                numeric_columns,
+                categorical_columns,
+            )
+            for model_name, model_pipeline in model_registry.items():
+                model_pipeline.fit(x_train, y_train)
+                predictions = model_pipeline.predict(x_evaluation)
+                metrics = compute_regression_metrics(y_evaluation, predictions)
+                feature_count = len(
+                    model_pipeline.named_steps["preprocessor"].get_feature_names_out()
+                )
+
+                fold_rows.append(
+                    {
+                        "CategoryID": category_id,
+                        "DatasetName": dataset_spec["dataset_name"],
+                        "ModelName": model_name,
+                        "FoldName": split_window.name,
+                        "TrainRows": int(len(train_frame)),
+                        "EvaluationRows": int(len(evaluation_frame)),
+                        "TrainStart": split_window.train_start.date().isoformat(),
+                        "TrainEnd": split_window.train_end.date().isoformat(),
+                        "EvaluationStart": split_window.evaluation_start.date().isoformat(),
+                        "EvaluationEnd": split_window.evaluation_end.date().isoformat(),
+                        "FeatureCount": int(feature_count),
+                        **metrics,
+                    }
+                )
+                log.info(
+                    "Baseline treinado | categoria=%s | modelo=%s | fold=%s | MAE=%.4f | RMSE=%.4f | MAPE=%.2f | R2=%.4f",
+                    dataset_spec["dataset_name"],
+                    model_name,
+                    split_window.name,
+                    metrics["MAE"],
+                    metrics["RMSE"],
+                    metrics["MAPE"],
+                    metrics["R2"],
+                )
+
+    fold_metrics_df = pd.DataFrame(fold_rows).sort_values(
+        by=["CategoryID", "ModelName", "FoldName"],
+        kind="stable",
+    ).reset_index(drop=True)
+    summary_df = (
+        fold_metrics_df.groupby(["CategoryID", "DatasetName", "ModelName"], as_index=False)
+        .agg(
+            Folds=("FoldName", "count"),
+            MeanMAE=("MAE", "mean"),
+            StdMAE=("MAE", "std"),
+            MeanRMSE=("RMSE", "mean"),
+            StdRMSE=("RMSE", "std"),
+            MeanMAPE=("MAPE", "mean"),
+            StdMAPE=("MAPE", "std"),
+            MeanR2=("R2", "mean"),
+            StdR2=("R2", "std"),
+            MeanFeatureCount=("FeatureCount", "mean"),
+        )
+        .sort_values(by=["CategoryID", "MeanMAE", "MeanRMSE"], kind="stable")
+        .reset_index(drop=True)
+    )
+    return fold_metrics_df, summary_df
+
+
+def write_baseline_report(
+    config: TemporalSplitConfig,
+    fold_metrics_df: pd.DataFrame,
+    summary_df: pd.DataFrame,
+) -> None:
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    fold_metrics_df.to_csv(BASELINE_FOLD_METRICS_FILE, index=False)
+    summary_df.to_csv(BASELINE_SUMMARY_FILE, index=False)
+
+    best_by_category = (
+        summary_df.sort_values(by=["CategoryID", "MeanMAE", "MeanRMSE"], kind="stable")
+        .groupby(["CategoryID", "DatasetName"], as_index=False)
+        .first()
+    )
+    best_lines = [
+        (
+            f"- `{row.DatasetName}`: melhor baseline por MAE foi `{row.ModelName}` "
+            f"(MAE medio `{row.MeanMAE:.4f}`, RMSE medio `{row.MeanRMSE:.4f}`, "
+            f"MAPE medio `{row.MeanMAPE:.2f}%`, R2 medio `{row.MeanR2:.4f}`)."
+        )
+        for row in best_by_category.itertuples(index=False)
+    ]
+
+    report_lines = [
+        "# Baseline Models com TSCV",
+        "",
+        f"- Gerado em: `{datetime.now().isoformat()}`",
+        f"- Fonte dos datasets finais: `{FINAL_FEATURES_DIR}`",
+        f"- Regime modelado: `{config.regime_start}` em diante.",
+        "",
+        "## Resultado DE",
+        "",
+        "- O loop de TSCV foi executado para as tres categorias-alvo e para os tres modelos baseline (`LinearRegression`, `Ridge` e `Lasso`).",
+        "- As metricas por fold e as medias gerais foram persistidas em CSV para comparacao com os algoritmos avancados.",
+        "",
+        "## Resultado DS",
+        "",
+        "- Os baselines abaixo definem o piso minimo que os modelos avancados precisam superar.",
+        "- A leitura usa a camada final por categoria, com as colunas de leakage alto ja removidas.",
+        "- Para manter os baselines lineares estaveis e rapidos, o treino usa um subconjunto model-ready: variaveis numericas, flags booleanas e `ProductID` com one-hot.",
+        "",
+        "## Media por Modelo e Categoria",
+        "",
+        summary_df.to_markdown(index=False),
+        "",
+        "## Melhor Baseline por Categoria",
+        "",
+        *best_lines,
+        "",
+        "## Detalhe por Fold",
+        "",
+        fold_metrics_df.to_markdown(index=False),
+    ]
+    BASELINE_REPORT_FILE.write_text("\n".join(report_lines), encoding="utf-8")
+    log.info("Relatorios baseline salvos em %s", REPORTS_DIR)
+
+
+def main() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     log.info("=" * 60)
-    log.info("Definindo estrategia temporal de treino")
+    log.info("Treinando modelos baseline com TSCV")
     log.info("=" * 60)
 
     config = TemporalSplitConfig()
@@ -449,10 +816,18 @@ def main() -> tuple[pd.DataFrame, pd.DataFrame]:
         category_df=category_df,
     )
 
+    cv_windows, _ = build_split_windows(frame, config)
+    fold_metrics_df, summary_df = run_baseline_tscv(config, cv_windows)
+    write_baseline_report(
+        config=config,
+        fold_metrics_df=fold_metrics_df,
+        summary_df=summary_df,
+    )
+
     log.info("=" * 60)
-    log.info("Estrutura temporal pronta para reutilizacao")
+    log.info("Baselines prontos para comparacao com modelos avancados")
     log.info("=" * 60)
-    return overall_df, category_df
+    return overall_df, category_df, fold_metrics_df, summary_df
 
 
 if __name__ == "__main__":
