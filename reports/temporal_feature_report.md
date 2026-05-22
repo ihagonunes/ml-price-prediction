@@ -1,8 +1,8 @@
 # Validacao das Features Temporais
 
-- Gerado em: `2026-05-05T21:02:20.107315`
-- Fonte: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical_curated`
-- Saida com features: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\features_temporal`
+- Gerado em: `2026-05-20T16:36:01.125484`
+- Fonte: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical_curated`
+- Saida com features: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\features_temporal`
 - Linhas processadas: `1999782`
 - Linhas gravadas: `1999782`
 

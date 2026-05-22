@@ -1,0 +1,15 @@
+Desafio de Machine Learning: Previsão de Preços para Diferentes Categorias da Uber
+
+Contexto
+A Uber oferece diferentes categorias de serviço, cada uma com um preço distinto baseado em múltiplos fatores, como distância, tempo estimado, demanda e condições de tráfego. O desafio é criar modelos de Machine Learning capazes de prever o preço estimado das corridas para três categorias: UberX, Uber Comfort e Uber Black.  
+
+Desafio
+Desenvolver **três modelos de Machine Learning, um para cada categoria, que possam prever o campo `Price` da tabela `rideestimative`, utilizando como entrada:  
+- As características da corrida registradas nas tabelas ride(sem utilizar o campo `Price` dessa tabela), rideestimative e product.  
+- As estimativas de preços de outras categorias de serviço como variáveis auxiliares.  
+
+Regras e Restrições
+Não é permitido utilizar diretamente o campo `Price` da tabela `ride` como feature no modelo.  
+O objetivo é maximizar a acurácia das previsões por meio da escolha adequada de features, técnicas de engenharia de dados e modelos.  
+A solução pode ser baseada em modelos de regressão, redes neurais ou outras abordagens adequadas.  
+

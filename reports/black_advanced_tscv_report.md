@@ -1,6 +1,6 @@
 # Modelos Avancados para Uber Black com TSCV
 
-- Gerado em: `2026-05-13T12:04:31.755503`
+- Gerado em: `2026-05-20T17:02:46.093618`
 - Dataset: `features_black.parquet`
 - Modelos treinados: `XGBoost`, `LightGBM` e `RandomForest` com hiperparametros padrao.
 

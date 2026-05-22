@@ -1,8 +1,8 @@
 # Estrategias de Tratamento de Nulos, Outliers e Inconsistencias
 
-- Gerado em: `2026-05-05T15:26:04.800675`
-- Fonte: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical`
-- Saida curada: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical_curated`
+- Gerado em: `2026-05-20T16:16:54.205519`
+- Fonte: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical`
+- Saida curada: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical_curated`
 - Linhas na origem: `2000000`
 - Linhas apos tratamento: `1999782`
 - Linhas removidas: `218`

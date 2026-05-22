@@ -1,6 +1,6 @@
 # Comparacao de Algoritmos e Selecao por Categoria
 
-- Gerado em: `2026-05-13T12:09:14.048535`
+- Gerado em: `2026-05-20T17:02:59.649108`
 - Criterio primario de selecao: `menor RMSE medio no TSCV`.
 - Modelos comparados: `LinearRegression`, `Ridge`, `Lasso`, `XGBoost`, `LightGBM` e `RandomForest`.
 
@@ -9,7 +9,7 @@
 | CategoryName   | AlgorithmGroup   | ModelName        |   MeanRMSE |   MeanMAE |   MeanMAPE |   MeanR2 |   RMSECategoryRank |
 |:---------------|:-----------------|:-----------------|-----------:|----------:|-----------:|---------:|-------------------:|
 | UberX          | advanced         | LightGBM         |   11.877   |   6.30405 |   18.7329  | 0.790554 |                  1 |
-| UberX          | advanced         | RandomForest     |   12.0872  |   6.33054 |   18.82    | 0.7832   |                  2 |
+| UberX          | advanced         | RandomForest     |   12.0844  |   6.33014 |   18.8174  | 0.783347 |                  2 |
 | UberX          | baseline         | Lasso            |   14.7999  |   7.99423 |   25.2968  | 0.673356 |                  3 |
 | UberX          | baseline         | Ridge            |   14.8247  |   8.01364 |   25.3865  | 0.672122 |                  4 |
 | UberX          | baseline         | LinearRegression |   14.8292  |   8.01538 |   25.3911  | 0.671893 |                  5 |
@@ -22,7 +22,7 @@
 | Uber Black     | baseline         | LinearRegression |   14.6721  |   9.91222 |   21.9823  | 0.860094 |                  6 |
 | Uber Comfort   | advanced         | LightGBM         |    7.46738 |   4.14988 |    8.3347  | 0.957665 |                  1 |
 | Uber Comfort   | advanced         | XGBoost          |    7.59965 |   4.32068 |    8.99602 | 0.956156 |                  2 |
-| Uber Comfort   | advanced         | RandomForest     |    7.90517 |   4.19749 |    8.26755 | 0.952714 |                  3 |
+| Uber Comfort   | advanced         | RandomForest     |    7.90239 |   4.19764 |    8.26741 | 0.952743 |                  3 |
 | Uber Comfort   | baseline         | LinearRegression |    9.2034  |   5.6052  |   12.8896  | 0.936363 |                  4 |
 | Uber Comfort   | baseline         | Ridge            |    9.20666 |   5.60316 |   12.8806  | 0.936303 |                  5 |
 | Uber Comfort   | baseline         | Lasso            |    9.20783 |   5.59615 |   12.8483  | 0.936263 |                  6 |
@@ -42,7 +42,7 @@
 - Modelo selecionado: `LightGBM` (advanced).
 - Escolha por RMSE: `11.8770` vs melhor baseline por RMSE `Lasso` = `14.7999` (delta `-2.9230`).
 - Leitura complementar: MAE `6.3040`, MAPE `18.73%`, R2 `0.7906`.
-- Trade-offs: Runner-up por RMSE: RandomForest (12.0872).
+- Trade-offs: Runner-up por RMSE: RandomForest (12.0844).
 
 ### Uber Black
 

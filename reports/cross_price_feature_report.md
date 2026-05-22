@@ -1,8 +1,8 @@
 # Features Cruzadas de Preco entre Categorias
 
-- Gerado em: `2026-05-05T21:02:20.268718`
-- Fonte: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical_curated`
-- Saida com features: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\features_temporal`
+- Gerado em: `2026-05-20T16:36:01.201329`
+- Fonte: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical_curated`
+- Saida com features: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\features_temporal`
 
 ## Regra de Pivot
 

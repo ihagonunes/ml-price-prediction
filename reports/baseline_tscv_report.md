@@ -1,7 +1,7 @@
 # Baseline Models com TSCV
 
-- Gerado em: `2026-05-13T11:11:04.654318`
-- Fonte dos datasets finais: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\final_features`
+- Gerado em: `2026-05-20T16:58:18.934690`
+- Fonte dos datasets finais: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\final_features`
 - Regime modelado: `2021-11-01` em diante.
 
 ## Resultado DE

@@ -1,7 +1,7 @@
 # Estrategia Temporal de Train/Test e TSCV
 
-- Gerado em: `2026-05-13T10:33:37.722752`
-- Fonte: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical_curated`
+- Gerado em: `2026-05-20T16:37:05.155947`
+- Fonte: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical_curated`
 - Regime usado para modelagem: `2021-11-01` ate `2022-06-14`
 
 ## Decisao DS

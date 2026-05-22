@@ -1,9 +1,9 @@
 # Features Historicas por Usuario
 
-- Gerado em: `2026-05-05T21:02:20.273360`
-- Fonte principal: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical_curated`
-- Fonte de preco pago historico: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\analytical`
-- Saida com features: `C:\Users\rodrigo.neiland\OneDrive - ESPM\Documentos\3sem\Martech\ml-price-prediction\data\features_temporal`
+- Gerado em: `2026-05-20T16:36:01.204478`
+- Fonte principal: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical_curated`
+- Fonte de preco pago historico: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\analytical`
+- Saida com features: `C:\Users\ihan.nunes\OneDrive - ESPM\Documentos\GitMartech\ml-price-prediction\data\features_temporal`
 
 ## Features Criadas
 
