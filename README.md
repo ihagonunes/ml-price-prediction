@@ -111,6 +111,12 @@ Coloque os três arquivos CSV na pasta `data/` conforme a tabela acima.
 | Relatório de EDA | `reports/eda_report.html` |
 | Comparativo de métricas | `reports/results_comparison.csv` |
 
+## Documentacao Tecnica
+
+| Documento | Localizacao |
+|---|---|
+| Decisoes tecnicas, limitacoes e proximos passos | `docs/decisoes_tecnicas.md` |
+
 ---
 
 ## Estratégia de Validação
