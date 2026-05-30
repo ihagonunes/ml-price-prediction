@@ -1,152 +1,206 @@
-# Modelo Preditivo de Preços por Categoria de Serviço
+# Modelo Preditivo de Precos por Categoria de Servico
 
-**Área:** Martech / Analytics  
-**Time:** Data Science & Engenharia de Dados  
-**Status:** Em desenvolvimento  
-
----
+**Area:** Martech / Analytics
+**Time:** Data Science & Engenharia de Dados
+**Status:** Concluido
 
 ## Objetivo
 
-Desenvolver três modelos de Machine Learning independentes (um por categoria) para prever o preço estimado de corridas nas categorias **UberX**, **Uber Comfort** e **Uber Black**, utilizando como entrada as características da corrida presentes nas tabelas `ride`, `rideestimative` e `product`.
+Prever o `Price` estimado das corridas em tres categorias independentes:
 
-A variável-alvo é o campo `Price` da tabela `rideestimative`. O campo `price` da tabela `ride` (preço real) **não pode ser utilizado como feature**.
+- `UberX`
+- `Uber Comfort`
+- `Uber Black`
 
----
+O projeto usa as tabelas `ride_v2.csv`, `rideestimative_v3.csv`, `rideaddress_v1.csv` e `product.csv` como fonte, com pipeline temporalmente ordenado, engenharia de features e validacao por `TimeSeriesSplit`.
 
-## Estrutura do Repositório
+O campo alvo e `Price` da tabela `rideestimative_v3.csv`. O campo `price` da tabela `ride_v2.csv` e preco real e nao pode ser usado como feature.
 
-```
+## Estrutura do Repositorio
+
+```text
 ml-price-prediction/
-│
-├── data/                        # Dados brutos (não versionados — ver .gitignore)
-│   └── README.md                # Instruções de como obter os dados
-│
-├── notebooks/                   # Notebooks de análise e modelagem
-│   ├── 01_eda.ipynb             # Análise exploratória de dados
-│   ├── 02_feature_engineering.ipynb
-│   ├── 03_modeling_uberx.ipynb
-│   ├── 03_modeling_comfort.ipynb
-│   └── 03_modeling_black.ipynb
-│
-├── src/                         # Código-fonte modularizado
-│   ├── ingestion.py             # Ingestão, validação e join das tabelas
-│   ├── features.py              # Feature engineering
-│   ├── train.py                 # Loop de TSCV, treino e avaliação
-│   └── utils.py                 # Helpers compartilhados
-│
-├── models/                      # Modelos serializados (não versionados)
-│   └── .gitkeep
-│
-├── reports/                     # Relatórios gerados
-│   └── .gitkeep
-│
-├── requirements.txt
-├── .gitignore
-└── README.md
+  data/
+    README.md
+    ride_v2.csv
+    rideestimative_v3.csv
+    rideaddress_v1.csv
+    product.csv
+  docs/
+    decisoes_tecnicas.md
+  notebooks/
+    eda_report_notes.ipynb
+  src/
+    ingestion.py
+    profiling.py
+    target_analysis.py
+    correlation_analysis.py
+    temporal_analysis.py
+    data_treatment.py
+    eda_report.py
+    features.py
+    export_final_features.py
+    train.py
+    train_advanced_uberx.py
+    train_advanced_comfort.py
+    train_advanced_black.py
+    compare_model_results.py
+    tune_selected_models.py
+    serialize_final_models.py
+    generate_results_comparison.py
+    validate_notebooks.py
+    model_artifact.py
+  models/
+  reports/
+  requirements.txt
+  README.md
 ```
 
----
+## Como Obter os Dados
 
-## Dados
+Os dados nao sao versionados neste repositorio.
 
-Os arquivos de dados **não estão versionados** no repositório por questões de tamanho e confidencialidade. Para reproduzir o projeto, coloque os seguintes arquivos na pasta `data/`:
+1. Extraia o pacote original `.rar` do projeto.
+2. Copie os arquivos para `data/` com os nomes esperados pelo pipeline:
+   - `ride_v2.csv`
+   - `rideestimative_v3.csv`
+   - `rideaddress_v1.csv`
+   - `product.csv`
+3. Se voce tiver os arquivos com nomes legados (`ride.csv`, `rideestimative.csv`), renomeie-os ou ajuste as constantes em `src/ingestion.py`.
 
-| Arquivo | Descrição | Separador | Encoding |
-|---|---|---|---|
-| `ride.csv` | Corridas (~1.6M registros) | `;` | UTF-8 |
-| `rideestimative.csv` | Estimativas de preço (~2.5 GB) | `;` | UTF-8 |
-| `product.csv` | Catálogo de produtos/categorias (237 registros) | `;` | UTF-8 |
+O arquivo `rideestimative_v3.csv` e grande e nao deve ser aberto no Excel. A leitura do pipeline usa `chunksize` para evitar estouro de memoria.
 
-> ⚠️ O arquivo `rideestimative.csv` tem ~2.5 GB. A leitura é feita com `chunksize` para evitar estouro de memória.
+Veja tambem `data/README.md` para detalhes do layout esperado.
 
----
-
-## Como Reproduzir
-
-### 1. Clonar o repositório
-
-```bash
-git clone https://github.com/<org>/ml-price-prediction.git
-cd ml-price-prediction
-```
-
-### 2. Criar e ativar o ambiente virtual
+## Configuracao do Ambiente
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate        # Linux/Mac
-.venv\Scripts\activate           # Windows
-```
-
-### 3. Instalar dependências
-
-```bash
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Adicionar os dados
+O projeto foi validado com Python 3.14 e as dependencias listadas em `requirements.txt`.
 
-Coloque os três arquivos CSV na pasta `data/` conforme a tabela acima.
+## Reproducao Completa Do Zero
 
-### 5. Executar os notebooks em ordem
+Execute os passos na ordem abaixo para recriar o projeto do zero:
 
-| Ordem | Notebook | Descrição |
-|---|---|---|
-| 1 | `01_eda.ipynb` | EDA e profiling das 3 tabelas |
-| 2 | `02_feature_engineering.ipynb` | Geração dos datasets de features por categoria |
-| 3 | `03_modeling_uberx.ipynb` | Modelagem para UberX |
-| 4 | `03_modeling_comfort.ipynb` | Modelagem para Uber Comfort |
-| 5 | `03_modeling_black.ipynb` | Modelagem para Uber Black |
+1. `python src/ingestion.py`
+2. `python src/profiling.py`
+3. `python src/target_analysis.py`
+4. `python src/correlation_analysis.py`
+5. `python src/temporal_analysis.py`
+6. `python src/data_treatment.py`
+7. `python src/eda_report.py`
+8. `python src/features.py`
+9. `python src/export_final_features.py`
+10. `python src/train.py`
+11. `python src/train_advanced_uberx.py`
+12. `python src/train_advanced_comfort.py`
+13. `python src/train_advanced_black.py`
+14. `python src/compare_model_results.py`
+15. `python src/tune_selected_models.py`
+16. `python src/serialize_final_models.py`
+17. `python src/generate_results_comparison.py`
+18. `python src/validate_notebooks.py`
 
-> Cada notebook deve ser executado com **Restart Kernel & Run All** para garantir reprodutibilidade.
+Essa ordem produz toda a cadeia de artefatos: dados curados, features finais, modelos baseline, modelos avancados, tuning, serializacao final e consolidacao comparativa.
 
----
+## Notebook De Apoio
 
-## Entregáveis
+Hoje existe apenas um notebook no repositorio:
 
-| Artefato | Localização |
-|---|---|
-| 3 modelos serializados | `models/model_uberx.joblib`, `model_comfort.joblib`, `model_black.joblib` |
-| Relatório de EDA | `reports/eda_report.html` |
-| Comparativo de métricas | `reports/results_comparison.csv` |
+- `notebooks/eda_report_notes.ipynb`
 
-## Documentacao Tecnica
+Ele e um notebook de anotacoes DS ligado ao `eda_report.html`. Para manter a reproducao limpa, use `Restart Kernel & Run All` ao reexecuta-lo, mesmo que ele seja atualmente apenas informativo.
 
-| Documento | Localizacao |
-|---|---|
-| Decisoes tecnicas, limitacoes e proximos passos | `docs/decisoes_tecnicas.md` |
+## Onde Encontrar Os Artefatos
 
----
+### Dados intermedios
 
-## Estratégia de Validação
+- `data/analytical/` - dataset analitico consolidado em Parquet
+- `data/analytical_curated/` - camada curada com tratamento de nulos, outliers e inconsistencias
+- `data/features_temporal/` - features temporais e historicas por categoria
+- `data/final_features/` - datasets finais por categoria prontos para treino
 
-Os modelos são avaliados com **Time Series Cross-Validation (TSCV)** — folds ordenados por tempo, sem shuffling. O modelo nunca "vê o futuro" durante treino ou validação.
+### Modelos
 
-**Métricas reportadas por fold e média geral:** MAE, RMSE, MAPE, R²
+- `models/model_uberx.joblib`
+- `models/model_comfort.joblib`
+- `models/model_black.joblib`
 
----
+### Principais relatorios
 
-## Regras Críticas
+- `reports/analytical_dataset_validation.json`
+- `reports/parquet_profiling_report.md`
+- `reports/data_treatment_strategy.md`
+- `reports/temporal_analysis.md`
+- `reports/tscv_strategy.md`
+- `reports/eda_report.html`
+- `reports/baseline_tscv_report.md`
+- `reports/uberx_advanced_tscv_report.md`
+- `reports/comfort_advanced_tscv_report.md`
+- `reports/black_advanced_tscv_report.md`
+- `reports/model_selection_report.md`
+- `reports/selected_model_tuning_report.md`
+- `reports/final_model_serialization_report.md`
+- `reports/results_comparison.csv`
+- `reports/results_comparison_report.md`
 
-- ❌ O campo `price` da tabela `ride` **nunca** deve ser usado como feature
-- ❌ Campos PII (`Name`, `Phone`, `Driver`, `Plate`, `DriverPhone`, `DriverPicture`, `Registration`) são removidos automaticamente no pipeline de ingestão
-- ✅ A variável-alvo é exclusivamente `Price` da tabela `rideestimative`
+### Documentacao tecnica
 
----
+- `docs/decisoes_tecnicas.md`
 
-## Categorias-Alvo
+## Como Interpretar Os Resultados
 
-| Categoria | ProviderID | CategoryID | Produtos |
-|---|---|---|---|
-| UberX | 2 | 2 | UberX, UberXPromo, UberX Sem Pressa |
-| Uber Comfort | 2 | 9 | Comfort, Select, VoucherComfort |
-| Uber Black | 2 | 4 | Black, WPP5, WPP-5-5 |
+### 1. Validade dos dados
 
----
+- `reports/analytical_dataset_validation.json` confirma que o join e a persistencia em Parquet fecharam sem perda inesperada.
+- `reports/parquet_profiling_report.md` mostra nulos, duplicatas, cardinalidade e outliers.
+- `reports/data_treatment_strategy.md` registra as regras de limpeza, imputacao e capping.
 
-## Fora do Escopo
+### 2. Estrategia temporal
 
-- Deploy em produção (API de inferência, monitoramento, retraining automático)
-- Integração com data lakes corporativos
-- Modelos para categorias além das três especificadas
+- `reports/temporal_analysis.md` confirma a cobertura temporal, a sazonalidade e os gaps.
+- `reports/tscv_strategy.md` documenta o desenho final do `TimeSeriesSplit`.
+- `Create` e a ancora temporal do treinamento.
+
+### 3. Selecao de modelo
+
+- `reports/model_selection_report.md` consolida a comparacao entre algoritmos.
+- `reports/selected_model_tuning_report.md` mostra o ganho do tuning por categoria.
+- `reports/results_comparison.csv` e o entregavel principal de avaliacao, com metricas por algoritmo, categoria e fold, alem das medias finais.
+
+O melhor modelo final por `RMSE` medio no TSCV foi `LightGBM_Tuned` nas tres categorias.
+
+### 4. Deploy / uso final
+
+- `reports/final_model_serialization_report.md` valida a serializacao dos modelos finais.
+- Os artefatos `models/*.joblib` podem ser carregados para inferencia offline.
+
+## Regras Criticas
+
+- Nao usar `price` da tabela `ride_v2.csv` como feature.
+- Nao usar campos de vazamento ou pos-evento como `RidePrice`, `Selected` e `RideReasonSelectedEstimativeID`.
+- Todos os registros do mesmo `RideID` devem permanecer no mesmo fold.
+- `Updated` nao deve ser a ancora do TSCV.
+
+## Limites Conhecidos
+
+- O schema nao traz timestamp por estimativa individual, entao algumas features cruzadas usam `RideEstimativeID` como melhor proxy de ordem.
+- O projeto ainda nao inclui clima, transito, eventos locais ou sinais de oferta e demanda externa.
+- Nao existe API de inferencia em producao nem monitoramento automatizado.
+
+## Proximos Passos
+
+1. Expor uma API de inferencia.
+2. Implementar monitoramento de drift e performance.
+3. Automatizar retraining com janela temporal fixa.
+4. Adicionar features externas como clima, eventos e transito.
+5. Avaliar calibracao, `log1p(target)` e interpretabilidade por SHAP.
+
+## Documentacao Complementar
+
+- `data/README.md`
+- `docs/decisoes_tecnicas.md`
